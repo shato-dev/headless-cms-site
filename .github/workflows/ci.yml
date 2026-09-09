@@ -1,0 +1,30 @@
+# Runs on GitHub's servers for every push to main and every pull request.
+# Only checks that the site builds; the Cloudflare Pages deploy job is added
+# in a later milestone (M3).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24 # matches the local dev version
+          cache: npm
+
+      # `npm ci` installs strictly from package-lock.json (reproducible),
+      # unlike `npm install` which may update the lockfile.
+      - run: npm ci
+
+      # The actual check: the site must build without errors.
+      - run: npm run build

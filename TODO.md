@@ -14,7 +14,7 @@
 - [ ] `gh repo create headless-cms-site --public --source=. --push`
 - [ ] 初回 CI が緑を確認
 - [ ] main ブランチ保護(required status check = `build`、`strict:false`、`enforce_admins:false`)
-- [ ] PLAN.md 進捗表 M1 を ✅、Notion「転職に向けた学習TODOリスト」の当該項目を更新
+- [ ] PLAN.md 進捗表 M1 を ✅、外部の学習ノートの該当項目を更新(`CLAUDE.local.md` 参照)
 
 ## 次(M2: microCMS)
 

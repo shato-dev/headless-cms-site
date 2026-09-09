@@ -1,8 +1,7 @@
 # PLAN — my-web-project(本番)
 
-データプラットフォームエンジニアからウェブエンジニアへの転職に向けた学習プロジェクト。
-転職先の期待役割(データ解析環境の整備・API・ヘッドレスCMS・PostgreSQL+JSON・Cloudflare)に
-直結する技術を、**実際に動くものを作りながら**学ぶ。完成度より理解を優先する。
+ヘッドレス CMS・API・全文検索・PostgreSQL/JSONB・Cloudflare といった、ウェブ開発の実務で扱う
+技術領域を、**実際に動くものを作りながら**学ぶ学習プロジェクト。完成度より理解を優先する。
 
 > 準備運動 `../astro-warmup` で Astro とローカル開発 + Git/GitHub の流れは一周済み(2026-08-30 完了)。
 > 本番でも同じ進め方を踏襲する。**各マイルストーンに Git / GitHub の操作を意図的に混ぜる**
@@ -18,14 +17,14 @@
 | **M2** | microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/タグページ | ⬜ 未着手 | **最初の PR 練習**。microCMS Free プラン(カード不要) |
 | **M3** | GitHub Actions で Cloudflare Pages へ自動デプロイ | ⬜ 未着手 | 「push → 本番更新」の CI/CD 体験。要 Cloudflare アカウント(無料枠 / カード要否を着手前に確認) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ⬜ 未着手 | ローカル開発基盤。Docker Desktop 起動確認が要る |
-| **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | 転職先の期待役割に直結。M4 のコンテナを使う |
+| **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | M4 のコンテナを使う。可変・半構造データを JSONB で持つ |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ⬜ 未着手 | 日本語のタイプミス許容検索まで。`../astro-warmup/src/components/Search.astro` が骨組み |
 | **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手 | **運用しない**。仕組みの理解のみ |
 
 継続タスク(番号なし): Claude Code の実践的な使い方に慣れる(CLAUDE.md 構成 / カスタムコマンド /
 サブエージェント / Hook)。各マイルストーンの中で都度触れる。
 
-**スコープ外**: AWS / AWS CDK。別途学習する(Notion「AWS CDK学習」)。
+**スコープ外**: AWS / AWS CDK。別途学習する。
 
 ### 引き継ぎ用メモ(新チャットはまず読む)
 
@@ -34,15 +33,15 @@
   (非対話シェルは PATH を読まない)。通常のターミナル操作では不要。
 - **`gh` は `/opt/homebrew/bin/gh`**。PATH に無いことがあるので `export PATH="/opt/homebrew/bin:$PATH"` を付ける。
   認証済み(`shato-dev` / SSH)。
-- **git のコミットメール**は GitHub の noreply(`322320652+shato-dev@users.noreply.github.com`)。
-  実アドレス混入を毎回点検する(astro-warmup では実アドレスが author に混入し、リポジトリを作り直した)。
+- **git のコミットメール**は GitHub の noreply(`shato-dev` の users.noreply アドレス)。
+  最初のコミット前に `git config user.email` を確認し、実アドレスの混入を毎回点検する。
 - **public リポジトリ**。絶対パス `/Users/<name>/...`(OS ユーザー名を露出)・メール・実名・
   API キー / トークン / 秘密鍵・社内/非公開 URL を成果物・ドキュメント・コード・コメント・設定ファイルに残さない。
   外部に出す操作(push / PR / Pages 公開 / 外部サービス送信)の前に必ず点検し「これは公開されます」と一言添える。
 - **課金ブロック Hook**(`.claude/settings.json`): コマンド文字列が `aws ` / `terraform apply` /
   `cdk deploy` / `cdk bootstrap` / `wrangler ...--yes` にマッチすると exit 2 で停止。
   `permissions.deny` にも `Bash(aws:*)` 等。**ブロックされたら回避策を書かず、まず相談する**。
-- **予算方針**: 従量課金のサービス・プランは使わない。月額固定/買い切りで数千円まで。
+- **予算方針**: 従量課金のサービス・プランは使わない。無料枠・無料プラン中心、有料でも安価な月額固定 / 買い切りに限る。
   新サービス提案時は「カード登録の要否」「料金体系(固定/従量/トライアル後自動課金)」を先に明記してから選択肢を出す。
 - **dev サーバー**: `.claude/launch.json` に `astro-dev`(port 4321, autoPort)を定義済み。
   Browser プレビューの `preview_start({name:"astro-dev"})` で起動。`astro dev` は 1 フォルダ 1 プロセス(ロックあり)。
@@ -52,11 +51,8 @@
   - `KNOWLEDGE.md` = 用語・概念の理解メモ。新しい語が出たら「何を解決するか」を一言添えて追記。
     基礎用語(Node/npm/ビルド/content collection/Git 基本など)は `../astro-warmup/KNOWLEDGE.md` にある。
   - `TODO.md` = 直近タスク。`/clear` する前に更新。
-- **Notion の既存ページ**(「学習まとめ」配下)は読むだけでなく、分かったこと・ハマりどころを追記していく:
-  - 「Claude全体の使い方・学びまとめ」/「ClaudeCodeの使い方まとめ」/「転職に向けた学習TODOリスト」
-  - Notion コネクタは `<script>` `<style>` `<body>` 等の文字列を弾く / ドメイン風トークンを自動リンク化する癖がある。
-- **学習の区切り**では KNOWLEDGE.md の要点をスライド形式資料にまとめ、Notion「学習まとめ」に移植する
-  (astro-warmup で機能したやり方)。
+- **学習ノート**は読むだけでなく、分かったこと・ハマりどころを都度追記していく(詳細な連携先は `CLAUDE.local.md`)。
+- **学習の区切り**では KNOWLEDGE.md の要点をスライド形式資料にまとめる(astro-warmup で機能したやり方)。
 
 ---
 
@@ -155,7 +151,7 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
   可変・半構造なデータは `JSONB` カラムに入れ、`->>` / `@>` / GIN インデックスで検索。
   取得用の小さな API(Cloudflare Workers か、まずはローカルの Node/Astro エンドポイント)を作る。
   本番 DB は Supabase か Neon の無料プラン(**着手前にカード要否 / 無料枠を整理**)。
-- **なぜ / 何を学ぶか**: 転職先の期待役割「PostgreSQL + JSON」に直結。
+- **なぜ / 何を学ぶか**: 「PostgreSQL + JSON」は実務で扱う中心的なテーマ。
   JSONB = 「スキーマを固めきれないデータを、正規化せず 1 カラムに入れて後からクエリできる」型。
   いつ列に分け、いつ JSONB にするかの判断。
 - **Git・GitHub**: スキーマ SQL(マイグレーション)/ API を小さくコミット。余力で PR。
@@ -219,4 +215,4 @@ my-web-project/
 5. 新しい用語はその場で 1〜2 行の説明を添え、`KNOWLEDGE.md` に「何を解決するか」を追記。
 6. 外部公開・外部送信の前にコンテンツ点検 +「これは公開されます」の一言。
 7. 繰り返す定型作業は Skill として切り出して育てる。
-8. Notion「学習まとめ」の該当ページに、分かったこと・ハマりどころを追記する。
+8. 学習ノートに、分かったこと・ハマりどころを追記する(連携先は `CLAUDE.local.md`)。

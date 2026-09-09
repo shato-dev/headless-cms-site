@@ -33,6 +33,23 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
 
 ### M1: リポジトリ作成 + Astro 初期化
 
+- **非空ディレクトリでの `npm create astro`**: カレントに `CLAUDE.md` / `.claude/` があると
+  雛形 CLI が同じ場所に展開できない。サブフォルダ(`_scaffold/`)に生成し、`src/` `public/`
+  `package.json` `astro.config.mjs` `tsconfig.json` `.gitignore` `README.md` などを手で直下へ移動した。
+  雛形が置く `CLAUDE.md`(= Astro の汎用ガイド、`AGENTS.md` と同内容)は既存の本物を守るため移動しなかった。
+- **`git init` からの最初のコミット**: `my-web-project/` は git 未管理だったので `git init`。
+  デフォルトブランチは `main`。最初のコミット前に `git config user.email` が GitHub の noreply か確認
+  (astro-warmup で実アドレス混入 → 作り直しの教訓)。
+- **`.claude/settings.local.json`**: Claude Code が許可リストをローカルに書き出すファイル。
+  共有すべきでないので `.gitignore` に足して `git rm --cached` で追跡解除。個人的文脈は
+  `CLAUDE.local.md`(同じく gitignore)に分離した。
+- **build のみの CI**: `.github/workflows/ci.yml` は `npm ci` → `npm run build` だけ。
+  deploy は M3。`push`(main)と `pull_request` の両方でトリガー。プロジェクト初日から入れておくと
+  「壊れた状態を push したらすぐ赤くなる」。
+- **main ブランチ保護(API 経由)**: `gh api -X PUT repos/<owner>/<repo>/branches/main/protection`。
+  `required_status_checks.contexts=["build"]`(= ci.yml の job 名)/ `strict:false`(PR の最新化を強制しない)
+  / `enforce_admins:false`(管理者は直 push 可、PR マージ時は CI 必須)。
+
 ### M2: microCMS
 
 ### M3: Cloudflare Pages 自動デプロイ

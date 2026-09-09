@@ -2,21 +2,21 @@
 
 `/clear` する前に更新する。全体像と背景は PLAN.md。
 
-## いま(M1: リポジトリ作成 + Astro 初期化)
+## M1: リポジトリ作成 + Astro 初期化 — ✅ 完了(2026-09-09)
 
 - [x] Astro 雛形を scaffold(minimal + TS strict)
 - [x] `.gitignore` 確認 / `package.json` name = `headless-cms-site`
-- [x] `.claude/launch.json` 追加
+- [x] `.claude/launch.json` 追加 / `.claude/settings.local.json` を追跡解除
 - [x] `PLAN.md` / `KNOWLEDGE.md` / `TODO.md` / `README.md` 追加
-- [ ] build のみの `.github/workflows/ci.yml` 追加
-- [ ] ローカル `npm run build` 確認
-- [ ] コンテンツ点検(public 公開前 — メール / 絶対パス / 秘密情報 / 非公開 URL)
-- [ ] `gh repo create headless-cms-site --public --source=. --push`
-- [ ] 初回 CI が緑を確認
-- [ ] main ブランチ保護(required status check = `build`、`strict:false`、`enforce_admins:false`)
-- [ ] PLAN.md 進捗表 M1 を ✅、外部の学習ノートの該当項目を更新(`CLAUDE.local.md` 参照)
+- [x] build のみの `.github/workflows/ci.yml` 追加
+- [x] ローカル `npm run build` 確認
+- [x] コンテンツ点検 + 私的文脈を `CLAUDE.local.md`(git 管理外)へ分離
+- [x] `gh repo create headless-cms-site --public --source=. --push` → <https://github.com/shato-dev/headless-cms-site>
+- [x] 初回 CI 緑
+- [x] main ブランチ保護(required status check = `build`、`strict:false`、`enforce_admins:false`)
+- [ ] 外部の学習ノートの該当項目を「完了」に更新(`CLAUDE.local.md` 参照)
 
-## 次(M2: microCMS)
+## いま → 次(M2: microCMS)
 
 - [ ] Plan Mode で M2 の詳細手順を作る
 - [ ] microCMS アカウント / サービス作成(Free プラン、カード登録不要)

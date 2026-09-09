@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(aws:*)",
+      "Bash(terraform apply*)",
+      "Bash(cdk deploy*)",
+      "Bash(cdk bootstrap*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command' | grep -qE '(aws |terraform apply|cdk deploy|cdk bootstrap|wrangler.*--yes)' && echo '課金が発生しうるコマンドです。ユーザーに確認してください。' && exit 2 || exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,85 @@
+:root {
+  --bg: #fdfcf9;
+  --fg: #1f1c18;
+  --muted: #756e63;
+  --border: #ded7c9;
+  --accent: #7a4b2e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  line-height: 1.8;
+}
+
+a {
+  color: var(--accent);
+}
+
+.site-header,
+main,
+.site-footer {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1.2rem;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding-top: 1.2rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.site-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  text-decoration: none;
+  color: var(--fg);
+}
+
+.site-header nav {
+  display: flex;
+  gap: 1rem;
+}
+
+main {
+  padding-top: 1.5rem;
+  padding-bottom: 3rem;
+  min-height: 60vh;
+}
+
+.site-footer {
+  padding: 1.5rem 1.2rem 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

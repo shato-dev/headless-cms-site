@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAuthors } from '../../lib/works';
+
+const authors = await getAuthors();
+---
+
+<BaseLayout title="著者一覧">
+  <h1>著者一覧</h1>
+  <p>{authors.length}名。<a href="/">作品一覧へ戻る</a></p>
+  <ul class="author-list">
+    {authors.map(([author, count]) => (
+      <li>
+        <a href={`/authors/${encodeURIComponent(author)}`}>{author}</a>
+        <span>{count}作品</span>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>
+
+<style>
+  .author-list {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: 0.3rem 1rem;
+  }
+  .author-list li {
+    padding: 0.3rem 0;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .author-list span {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>

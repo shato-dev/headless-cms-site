@@ -1,0 +1,54 @@
+---
+// A single work preview used in list pages (index, author, genre).
+interface Props {
+  id: string;
+  title: string;
+  author: string;
+  summary: string;
+  genreTags: string[];
+}
+
+const { id, title, author, summary, genreTags } = Astro.props;
+---
+
+<article class="work-card">
+  <h2><a href={`/works/${id}`}>{title}</a></h2>
+  <p class="work-card-author">
+    <a href={`/authors/${encodeURIComponent(author)}`}>{author}</a>
+  </p>
+  <p class="work-card-summary">{summary}</p>
+  <p class="work-card-tags">
+    {genreTags.map((tag) => <a class="tag" href={`/genres/${encodeURIComponent(tag)}`}>{tag}</a>)}
+  </p>
+</article>
+
+<style>
+  .work-card {
+    padding: 1.2rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .work-card h2 {
+    margin: 0 0 0.2rem;
+    font-size: 1.1rem;
+  }
+  .work-card h2 a {
+    text-decoration: none;
+  }
+  .work-card-author {
+    margin: 0 0 0.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .work-card-author a {
+    color: inherit;
+  }
+  .work-card-summary {
+    margin: 0.3rem 0;
+  }
+  .work-card-tags {
+    margin-top: 0.6rem;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+</style>

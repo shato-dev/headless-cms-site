@@ -1,17 +1,26 @@
 ---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WorkCard from '../components/WorkCard.astro';
+import { getWorks } from '../lib/works';
 
+// Runs at build time, on this machine. `works` is baked into the HTML.
+const works = await getWorks();
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="作品一覧" description="青空文庫の有名作品100選を、オリジナルの要約とともに紹介します。">
+  <h1>青空文庫 有名作品100選</h1>
+  <p>
+    パブリックドメインの日本文学から選んだ{works.length}作品を、オリジナルの要約つきで紹介します。
+    <a href="/authors">著者一覧</a>・<a href="/genres">ジャンル一覧</a>からも探せます。
+  </p>
+
+  {works.map((work) => (
+    <WorkCard
+      id={work.id}
+      title={work.data.title}
+      author={work.data.author}
+      summary={work.data.summary}
+      genreTags={work.data.genreTags}
+    />
+  ))}
+</BaseLayout>

@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getGenres } from '../../lib/works';
+
+const genres = await getGenres();
+---
+
+<BaseLayout title="ジャンル一覧">
+  <h1>ジャンル一覧</h1>
+  <p><a href="/">作品一覧へ戻る</a></p>
+  <ul class="genre-list">
+    {genres.map(([genre, count]) => (
+      <li><a class="tag" href={`/genres/${encodeURIComponent(genre)}`}>{genre}</a> <span>{count}作品</span></li>
+    ))}
+  </ul>
+</BaseLayout>
+
+<style>
+  .genre-list {
+    list-style: none;
+    padding: 0;
+  }
+  .genre-list li {
+    margin: 0.6rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .genre-list span {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>

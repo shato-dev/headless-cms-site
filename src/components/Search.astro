@@ -1,0 +1,131 @@
+---
+// Search box shown in the site header on every page.
+// Nothing happens in this frontmatter at runtime — all the work is in the
+// <script> below, which is bundled into dist/ and runs in the visitor's
+// browser each time they type. (Same two-region split as astro-warmup;
+// see ../../astro-warmup/KNOWLEDGE.md.)
+---
+
+<div class="search">
+  <label class="visually-hidden" for="search-input">作品を検索</label>
+  <input
+    type="search"
+    id="search-input"
+    placeholder="タイトル・著者・要約を検索…"
+    autocomplete="off"
+  />
+  <ul id="search-results" class="search-results" hidden></ul>
+</div>
+
+<script>
+  type Entry = {
+    title: string;
+    author: string;
+    summary: string;
+    url: string;
+  };
+
+  const input = document.querySelector<HTMLInputElement>('#search-input')!;
+  const results = document.querySelector<HTMLUListElement>('#search-results')!;
+
+  let entries: Entry[] = [];
+  let loaded = false;
+
+  // Fetch the index once, on the first keystroke (not on page load).
+  async function loadIndex() {
+    if (loaded) return;
+    const res = await fetch('/search.json');
+    entries = await res.json();
+    loaded = true;
+  }
+
+  function render(matches: Entry[], hasQuery: boolean) {
+    if (!hasQuery) {
+      results.hidden = true;
+      results.replaceChildren();
+      return;
+    }
+
+    results.hidden = false;
+
+    if (matches.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'search-empty';
+      li.textContent = '一致する作品がありません';
+      results.replaceChildren(li);
+      return;
+    }
+
+    // Build nodes with the DOM API and set text via textContent. Never
+    // splice data into an innerHTML string — that is how XSS bugs start.
+    results.replaceChildren(
+      ...matches.slice(0, 20).map((entry) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = entry.url;
+        a.textContent = `${entry.title}(${entry.author})`;
+        li.append(a);
+        return li;
+      }),
+    );
+  }
+
+  input.addEventListener('input', async () => {
+    await loadIndex();
+
+    const query = input.value.trim().toLowerCase();
+    const matches = query
+      ? entries.filter(
+          (entry) =>
+            entry.title.toLowerCase().includes(query) ||
+            entry.author.toLowerCase().includes(query) ||
+            entry.summary.toLowerCase().includes(query),
+        )
+      : [];
+
+    render(matches, query.length > 0);
+  });
+</script>
+
+<style>
+  .search {
+    position: relative;
+    margin-left: auto;
+  }
+  #search-input {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    width: 14rem;
+    max-width: 40vw;
+  }
+  .search-results {
+    position: absolute;
+    right: 0;
+    z-index: 10;
+    margin: 0.3rem 0 0;
+    padding: 0.3rem 0;
+    list-style: none;
+    min-width: 18rem;
+    max-width: 24rem;
+    max-height: 20rem;
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  }
+  .search-results li {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.9rem;
+  }
+  .search-results li a {
+    text-decoration: none;
+  }
+  .search-empty {
+    color: var(--muted);
+  }
+</style>

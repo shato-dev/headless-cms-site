@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkCard from '../../components/WorkCard.astro';
+import { getWorks, getAuthors } from '../../lib/works';
+
+// One page per unique author. Each page gets its matching works as props.
+export async function getStaticPaths() {
+  const works = await getWorks();
+  const authors = await getAuthors();
+
+  return authors.map(([author]) => ({
+    params: { author },
+    props: { works: works.filter((work) => work.data.author === author) },
+  }));
+}
+
+const { author } = Astro.params;
+const { works } = Astro.props;
+---
+
+<BaseLayout title={`${author} の作品`}>
+  <h1>{author}</h1>
+  <p>{works.length}作品。<a href="/authors">著者一覧へ</a></p>
+
+  {works.map((work) => (
+    <WorkCard
+      id={work.id}
+      title={work.data.title}
+      author={work.data.author}
+      summary={work.data.summary}
+      genreTags={work.data.genreTags}
+    />
+  ))}
+</BaseLayout>

@@ -1,0 +1,47 @@
+---
+// BaseLayout: the shared outer frame for every page.
+// Each page renders its own content into <slot /> (like React's children).
+import '../styles/global.css';
+import Search from '../components/Search.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const siteName = '青空文庫100選';
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    {description && <meta name="description" content={description} />}
+    <title>{title} | {siteName}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="site-title">{siteName}</a>
+      <nav>
+        <a href="/authors">著者一覧</a>
+        <a href="/genres">ジャンル一覧</a>
+      </nav>
+      <Search />
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        本サイトは<a href="https://www.aozora.gr.jp/" target="_blank" rel="noopener">青空文庫</a>の作品をもとにした独自の要約を掲載する学習プロジェクトです。
+        青空文庫による公認・監修を受けたものではありません。
+      </p>
+    </footer>
+  </body>
+</html>

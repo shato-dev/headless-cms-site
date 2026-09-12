@@ -14,7 +14,7 @@
 | M | マイルストーン | 状態 | メモ |
 |---|---|---|---|
 | **M1** | GitHubリポジトリ作成 + Astroプロジェクト初期化(+ 最小 CI) | ✅ 完了(2026-09-09) | `npm create astro`(minimal + TS strict)。repo: <https://github.com/shato-dev/headless-cms-site>(public)。build のみの CI 緑。main ブランチ保護(required check = `build`、`strict:false`、`enforce_admins:false`) |
-| **M2** | microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/タグページ | ⬜ 未着手 | **最初の PR 練習**。microCMS Free プラン(カード不要) |
+| **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | 🚧 フェーズA完了、フェーズB待ち | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。ローカル JSON 版(一覧/詳細/著者/ジャンル/検索)を実装・動作確認済み。**microCMS アカウント作成待ちで停止中**。**最初の PR 練習**。サイト機能バックログは下記参照 |
 | **M3** | GitHub Actions で Cloudflare Pages へ自動デプロイ | ⬜ 未着手 | 「push → 本番更新」の CI/CD 体験。要 Cloudflare アカウント(無料枠 / カード要否を着手前に確認) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ⬜ 未着手 | ローカル開発基盤。Docker Desktop 起動確認が要る |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | M4 のコンテナを使う。可変・半構造データを JSONB で持つ |
@@ -100,29 +100,65 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
 - **Git・GitHub**: 初回コミット群は main に直接。PR 練習は M2 から。
   公開前にコンテンツ点検(メール / 絶対パス / 秘密情報 / 非公開 URL)。
 
-### M2 — microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/タグページ
+### M2 — 青空文庫100作品サイト
 
-- **何をするか**:
-  - microCMS(Free プラン、カード登録不要)でサービスを作り、記事のコンテンツモデルを設計
-    (title / body(リッチエディタ or Markdown) / description / publishedAt / tags など)。
-  - Astro 側で microCMS の REST API を叩いて記事を取得。レスポンスの形を **Zod スキーマで縛る**
-    (`../astro-warmup/src/content.config.ts` の glob loader + Zod と同じ考え方。ローダーを
-    `glob` から microCMS fetch に置き換えるイメージ。content collection の Loader API を使うか、
-    `src/lib/` の関数で取得するかは着手時に判断)。
-  - `src/layouts/BaseLayout.astro` / `src/pages/index.astro`(一覧)/ `posts/[slug].astro`(本文)/
-    `tags/[tag].astro`(タグ別)/ `src/lib/posts.ts`(絞り込み・並べ替え・`href()` ヘルパー)。
-    astro-warmup の該当ファイルが下敷き。
-  - API キーは `.env`(gitignore 済み)。`.env.example` にキー名だけ commit。
+**題材**: 青空文庫の有名作品100選 + オリジナル要約(1エントリ = 1作品)。選定・要約は
+著作権チェックリスト(`docs/100作品要約チェックリスト.md`)に基づき全件監査済み
+(詳細: `docs/aozora-100-audit-report.md`。17件の事実誤認・捏造引用を発見・修正)。
+この監査で得た知見は `~/.claude/CLAUDE.md`「公開物の著作権・法令遵守」に恒久ルール化済み。
+
+- **何をするか(フェーズ A: ローカル JSON、アカウント不要)**:
+  - `src/content/works.json`(監査済み100件、`id`=青空文庫の作品番号)を Astro の
+    Content Layer API の **`file()` ローダー**で読み込む content collection として定義。
+    レスポンスの形を **Zod スキーマで縛る**(`../astro-warmup/src/content.config.ts` の
+    glob loader + Zod と同じ考え方)。
+  - `src/layouts/BaseLayout.astro` / `src/pages/index.astro`(一覧)/ `works/[id].astro`(詳細)/
+    `authors/index.astro`・`authors/[author].astro`(著者一覧・著者別)/
+    `genres/index.astro`・`genres/[genre].astro`(ジャンル一覧・ジャンル別)/
+    クライアントサイド検索(`../astro-warmup/src/components/Search.astro` と同方式。
+    M6 で Meilisearch に置き換える前段)。
+  - **何をするか(フェーズ B: microCMS 移行、アカウント作成後)**:
+    - microCMS(<https://microcms.io/>)でアカウント作成 → サービス作成 → API 作成(エンドポイント名
+      `works`、リスト形式)。フィールドは content.config.ts の Zod スキーマと同じ:
+      title(テキスト)/ author(テキスト)/ authorReading(テキスト、任意)/ translator(テキスト、任意)/
+      summary(テキストエリア)/ genreTags(セレクト・複数選択可、選択肢: 小説・童話・詩・随筆・戯曲)/
+      aozoraCardUrl(テキスト)。
+    - API キー(書き込み権限)を発行 → ローカルの `.env` に書く(chat には貼らない。`.env.example` 参照)。
+    - `node --env-file=.env scripts/import-to-microcms.mjs` で works.json → microCMS へ upsert。
+    - ローダーを `file()` から microCMS fetch のカスタムローダーに差し替え(表示側コードは無変更)。
 - **なぜ / 何を学ぶか**: ヘッドレス CMS = 「編集画面」と「表示」を分離し、コンテンツを API で配る仕組み。
-  「記事データをどこから取るか」の層(warmup では Markdown)が外部サービスに変わる。
-  ビルド時 fetch(SSG)と実行時 fetch の違い、API キーの秘匿。
+  Content Layer API の「ローダー = データがどこから来るかの抽象化」を、ローカル JSON →
+  外部 API への差し替えという形で実際に体験する。ビルド時 fetch(SSG)と実行時 fetch の違い、
+  API キーの秘匿、外部の公開データを扱う際の著作権・事実確認の重要性。
 - **Git・GitHub(PR 練習の本番)**:
   1. `git switch -c feat/content-from-microcms`。
-  2. 小さくコミット(スキーマ取得層 → レイアウト → 各ページ)。
+  2. 小さくコミット(シードデータ → コンテンツ定義 → レイアウト/部品 → ページ → 検索 → 移行スクリプト → ドキュメント)。
   3. `git push -u origin feat/content-from-microcms` → `gh pr create --fill`。
   4. GitHub で差分をセルフレビュー(何が変わったか自分の言葉で)。
   5. `gh pr merge --squash --delete-branch` → `git switch main && git pull`。
   6. CI(build)が緑でないとマージできないことを体験。
+  7. フェーズ B(microCMS 移行)は、アカウント作成後に別ブランチ・別 PR で行う。
+
+**サイト機能バックログ**(2026-09-12 追加。詳細は次節)は、著者ページ・検索まではこの M2 の
+範囲に含め、おすすめ機能等は M2 完了後の追加 PR で順次実装する。
+
+### サイト機能バックログ(2026-09-12 追加)
+
+「もう少し凝ったサイトにしたい」という要望を受けて追加した機能一覧。全件 100 作品という
+データ規模を活かせるものを中心に、要望分 + 提案分をまとめた。実装順は目安。
+
+| 機能 | 概要 | 実装メモ | 予定 |
+|---|---|---|---|
+| 著者一覧 + 著者別作品一覧 | `/authors`、`/authors/[author]` | `genres` と全く同じパターン(著者名で集計・フィルタ) | **M2 本体に含める** |
+| キーワード検索 | タイトル・著者・要約の部分一致検索 | astro-warmup の `Search.astro` と同方式(ビルド時に `search.json` を書き出し、ブラウザで `filter()`)。M6 で Meilisearch に置き換える前段として、ここで先に導入する | **M2 本体に含める** |
+| ランダムおすすめ(「今日の一冊」) | ボタン1つで100作品からランダムに1冊選び、詳細ページへ | クライアント JS で `id` 配列から抽選 → `location.href` 遷移。サーバー不要 | M2 完了後、追加 PR |
+| 診断式おすすめ | 気分・長さ・ジャンルなど数問に答えると1冊を提案 | まずは `genreTags` ベースの簡易スコアリングから開始(全文検索や本格的なレコメンドは将来 M5/M6 と絡めて発展させる余地あり) | M2 完了後、追加 PR(設計は着手時に詰める) |
+| 関連作品(提案) | 詳細ページ下部に「同じ著者の他の作品」「同じジャンルの作品」 | `author`/`genreTags` での単純フィルタ、追加データ不要 | 上記と同じ PR でまとめて実装しやすい |
+| 既読チェック・お気に入り(提案) | 読んだ本にチェック、お気に入り登録、進捗(◯/100冊)表示 | `localStorage` のみで実現(サーバー・アカウント不要) | 余力があれば |
+| 文学史年表(提案) | 著者の生没年・作品発表年で並べたタイムライン | 生没年データは書誌 CSV には存在するが `works.json` には未収録 → データ拡張が必要 | 余力があれば(データ拡張のコストを見て判断) |
+| ガチャ風演出(提案) | ランダムおすすめにアニメーション演出をつける | CSS アニメーション程度。お楽しみ要素 | 余力があれば |
+
+新しいアイデアが浮かんだら、都度この表に追記していく。
 
 ### M3 — GitHub Actions で Cloudflare Pages へ自動デプロイ
 
@@ -188,12 +224,16 @@ my-web-project/
 ├─ astro.config.mjs            … site を M3 で設定(base は不要)
 ├─ docker-compose.yml          … M4: postgres + meilisearch
 ├─ .env.example                … 必要な環境変数のキー名だけ(実 .env は gitignore)
+├─ docs/                       … 著作権チェックリスト・監査レポート等のプロジェクト文書
+├─ scripts/                    … import-to-microcms.mjs 等、ビルドに含めない単発スクリプト
 ├─ PLAN.md / KNOWLEDGE.md / TODO.md
 ├─ src/
-│  ├─ lib/                     … microCMS 取得 / posts.ts(絞り込み・href())
+│  ├─ content/works.json       … M2: 監査済み100作品(フェーズBで microCMS に移行)
+│  ├─ content.config.ts        … works コレクション定義(loader を差し替えていく)
+│  ├─ lib/                     … works.ts(絞り込み・集計)
 │  ├─ layouts/BaseLayout.astro
-│  ├─ components/              … PostCard.astro / Search.astro
-│  ├─ pages/                   … index / posts/[slug] / tags/[tag] / tags/index
+│  ├─ components/              … WorkCard.astro / Search.astro
+│  ├─ pages/                   … index / works/[id] / authors/* / genres/* / search
 │  └─ ...
 ├─ db/                         … M5: マイグレーション SQL
 ├─ workers/                    … M6: Cloudflare Workers(検索 API)

@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkCard from '../../components/WorkCard.astro';
+import { getWorks, getGenres } from '../../lib/works';
+
+// One page per unique genre tag. Collect genres from all works, dedupe via
+// getGenres(), and hand each page its matching works as props.
+export async function getStaticPaths() {
+  const works = await getWorks();
+  const genres = await getGenres();
+
+  return genres.map(([genre]) => ({
+    params: { genre },
+    props: { works: works.filter((work) => (work.data.genreTags as string[]).includes(genre)) },
+  }));
+}
+
+const { genre } = Astro.params;
+const { works } = Astro.props;
+---
+
+<BaseLayout title={`${genre} の作品`}>
+  <h1>{genre}</h1>
+  <p>{works.length}作品。<a href="/genres">すべてのジャンル</a></p>
+
+  {works.map((work) => (
+    <WorkCard
+      id={work.id}
+      title={work.data.title}
+      author={work.data.author}
+      summary={work.data.summary}
+      genreTags={work.data.genreTags}
+    />
+  ))}
+</BaseLayout>

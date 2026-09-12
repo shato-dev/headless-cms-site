@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getWorks } from '../../lib/works';
+
+// getStaticPaths: because this is a static site, we must list every URL
+// this [id] file should produce at build time. One entry per work, keyed
+// by the id we assigned in src/content/works.json (the Aozora Bunko work
+// number extracted from its card URL).
+export async function getStaticPaths() {
+  const works = await getWorks();
+  return works.map((work) => ({
+    params: { id: work.id },
+    props: { work },
+  }));
+}
+
+const { work } = Astro.props;
+const { title, author, authorReading, translator, summary, genreTags, aozoraCardUrl } = work.data;
+---
+
+<BaseLayout title={title} description={summary}>
+  <article>
+    <h1>{title}</h1>
+    <p class="work-author">
+      著者: <a href={`/authors/${encodeURIComponent(author)}`}>{author}</a>
+      {authorReading && <span class="work-reading">({authorReading})</span>}
+      {translator && <span> / 訳: {translator}</span>}
+    </p>
+    <p class="work-tags">
+      {genreTags.map((tag) => <a class="tag" href={`/genres/${encodeURIComponent(tag)}`}>{tag}</a>)}
+    </p>
+
+    <div class="work-summary">
+      <p>{summary}</p>
+    </div>
+
+    <p class="work-source">
+      出典: <a href={aozoraCardUrl} target="_blank" rel="noopener">青空文庫で読む</a>
+    </p>
+
+    <p><a href="/">← 作品一覧へ</a></p>
+  </article>
+</BaseLayout>
+
+<style>
+  .work-author {
+    margin: 0.3rem 0;
+  }
+  .work-reading {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .work-tags {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin: 0.5rem 0 1.5rem;
+  }
+  .work-summary {
+    font-size: 1.05rem;
+  }
+  .work-source {
+    margin-top: 1.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>

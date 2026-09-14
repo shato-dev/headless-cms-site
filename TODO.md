@@ -27,8 +27,12 @@
 - [x] キーワード検索(astro-warmup の `Search.astro` 方式)
 - [x] ローカル `npm run build`(144ページ、エラーなし)+ `preview_start` で目視確認
 - [x] `scripts/import-to-microcms.mjs` + `.env.example`(**未実行**)
-- [ ] PLAN.md 進捗更新 → push → PR → セルフレビュー → squash マージ
-- [ ] **ここで停止**: microCMS アカウント / サービス作成の手順を提示して待つ
+- [x] PLAN.md 進捗更新 → push → PR → セルフレビュー → squash マージ(フェーズA、PR #1)
+- [x] **停止 → 再開**: microCMS アカウント / サービス作成 完了(あなたの操作)
+- [x] `node --env-file=.env scripts/import-to-microcms.mjs` 実行 → 100件成功
+- [x] カスタムローダー(`src/lib/microcms-loader.ts`)実装、`content.config.ts` を差し替え
+- [x] ローカル build + ブラウザで動作確認(microCMS 由来のデータで表示)
+- [ ] push → PR → セルフレビュー → squash マージ(フェーズB)
 
 ## サイト機能バックログ(次の追加 PR、詳細は PLAN.md)
 

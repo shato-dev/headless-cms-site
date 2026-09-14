@@ -32,7 +32,10 @@
 - [x] `node --env-file=.env scripts/import-to-microcms.mjs` 実行 → 100件成功
 - [x] カスタムローダー(`src/lib/microcms-loader.ts`)実装、`content.config.ts` を差し替え
 - [x] ローカル build + ブラウザで動作確認(microCMS 由来のデータで表示)
-- [ ] push → PR → セルフレビュー → squash マージ(フェーズB)
+- [x] push → PR → セルフレビュー → squash マージ(フェーズB、PR #2)
+- [x] CI に microCMS の Secrets(`MICROCMS_SERVICE_DOMAIN` / `MICROCMS_API_KEY`)を追加、CI 緑を確認
+
+**M2 完了。** 次はサイト機能バックログの続き、または M3(Cloudflare Pages デプロイ)。
 
 ## サイト機能バックログ(次の追加 PR、詳細は PLAN.md)
 

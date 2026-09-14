@@ -14,7 +14,7 @@
 | M | マイルストーン | 状態 | メモ |
 |---|---|---|---|
 | **M1** | GitHubリポジトリ作成 + Astroプロジェクト初期化(+ 最小 CI) | ✅ 完了(2026-09-09) | `npm create astro`(minimal + TS strict)。repo: <https://github.com/shato-dev/headless-cms-site>(public)。build のみの CI 緑。main ブランチ保護(required check = `build`、`strict:false`、`enforce_admins:false`) |
-| **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | 🚧 フェーズA完了、フェーズB待ち | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。ローカル JSON 版(一覧/詳細/著者/ジャンル/検索)を実装・動作確認済み。**microCMS アカウント作成待ちで停止中**。**最初の PR 練習**。サイト機能バックログは下記参照 |
+| **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | ✅ 完了(2026-09-14) | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。microCMS に100件投入済み、カスタムローダーで取得。**最初の PR 練習(2回)**。サイト機能バックログは下記参照、継続実装 |
 | **M3** | GitHub Actions で Cloudflare Pages へ自動デプロイ | ⬜ 未着手 | 「push → 本番更新」の CI/CD 体験。要 Cloudflare アカウント(無料枠 / カード要否を着手前に確認) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ⬜ 未着手 | ローカル開発基盤。Docker Desktop 起動確認が要る |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | M4 のコンテナを使う。可変・半構造データを JSONB で持つ |
@@ -29,7 +29,10 @@
 ### 引き継ぎ用メモ(新チャットはまず読む)
 
 - **作業ディレクトリ**: リポジトリのルート(`my-web-project/`)。ブランチ `main`、`origin` = `git@github.com:shato-dev/headless-cms-site.git`。
-- **次にやること**: M2(microCMS)。着手時に Plan Mode で詳細手順を作る。`feat/content-from-microcms` ブランチ + PR で進める(最初の PR 練習)。
+- **次にやること**: サイト機能バックログ(著者ページ・検索は実装済み。ランダムおすすめ・診断式おすすめ等が次)。
+  着手時に Plan Mode で詳細手順を作る。または M3(Cloudflare Pages デプロイ)に進んでもよい。
+- **microCMS**: サービス・API(`works`)作成済み、`.env` にキーあり(git 管理外)。
+  `node --env-file=.env scripts/import-to-microcms.mjs` は再実行しても安全(upsert)。
 - **Node は nvm 管理**(`v24.20.0`)。Bash ツールの各コマンド冒頭で `source ~/.nvm/nvm.sh` が必要
   (非対話シェルは PATH を読まない)。通常のターミナル操作では不要。
 - **`gh` は `/opt/homebrew/bin/gh`**。PATH に無いことがあるので `export PATH="/opt/homebrew/bin:$PATH"` を付ける。

@@ -70,6 +70,18 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
   ジャンル名を動的ルートの `params`(`/authors/[author].astro` 等)に使う場合、リンクは
   `encodeURIComponent()` で組み立てる必要があるが、`getStaticPaths()` の `params` 自体は
   元の文字列(未エンコード)のままでよい(Astro がマッチング時にデコードしてくれる)。
+- **カスタムローダーの書き方**(`src/lib/microcms-loader.ts`): `astro/loaders` の `Loader` 型は
+  `{ name, load({ store, parseData, logger }) }` という最小限の形。`load()` の中で好きな方法で
+  データを取得し(今回は microCMS の List API を `offset`/`limit` でページング)、
+  `parseData({ id, data })` でスキーマ検証・変換してから `store.set({ id, data })` で登録する。
+  `file()` / `glob()` と全く同じインターフェースなので、呼び出し側(`content.config.ts` の
+  `defineCollection({ loader: ... })`)もページ側のコードも一切変更不要だった。
+- **`.env` は `import.meta.env` で読める**: `content.config.ts` はビルド時に Vite 経由で読み込まれるため、
+  プロジェクト直下の `.env` の変数がそのまま `import.meta.env.MICROCMS_API_KEY` のように参照できる。
+  取り込みスクリプト(素の Node スクリプト、Vite を通さない)は `node --env-file=.env` を使う必要が
+  あったのと対照的(Node 20.6+ の機能。Vite を通らないスクリプトはこちらが必要)。
+- **microCMS のページング**: List API は1回のリクエストで最大100件(`limit` の上限)。
+  100件を超えるコンテンツを全件取得するには `offset` を増やしながら複数回リクエストする必要がある。
 
 ### M3: Cloudflare Pages 自動デプロイ
 

@@ -26,5 +26,11 @@ jobs:
       # unlike `npm install` which may update the lockfile.
       - run: npm ci
 
-      # The actual check: the site must build without errors.
+      # The actual check: the site must build without errors. The build
+      # fetches content from microCMS (see src/lib/microcms-loader.ts), so
+      # it needs these as repo secrets (Settings > Secrets and variables >
+      # Actions), matching the local .env keys.
       - run: npm run build
+        env:
+          MICROCMS_SERVICE_DOMAIN: ${{ secrets.MICROCMS_SERVICE_DOMAIN }}
+          MICROCMS_API_KEY: ${{ secrets.MICROCMS_API_KEY }}

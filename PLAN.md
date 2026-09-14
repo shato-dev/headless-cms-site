@@ -9,7 +9,7 @@
 
 ---
 
-## 進捗(現在地) — 2026-09-09 時点
+## 進捗(現在地) — 2026-09-14 時点
 
 | M | マイルストーン | 状態 | メモ |
 |---|---|---|---|
@@ -28,11 +28,17 @@
 
 ### 引き継ぎ用メモ(新チャットはまず読む)
 
-- **作業ディレクトリ**: リポジトリのルート(`my-web-project/`)。ブランチ `main`、`origin` = `git@github.com:shato-dev/headless-cms-site.git`。
-- **次にやること**: サイト機能バックログ(著者ページ・検索は実装済み。ランダムおすすめ・診断式おすすめ等が次)。
-  着手時に Plan Mode で詳細手順を作る。または M3(Cloudflare Pages デプロイ)に進んでもよい。
-- **microCMS**: サービス・API(`works`)作成済み、`.env` にキーあり(git 管理外)。
-  `node --env-file=.env scripts/import-to-microcms.mjs` は再実行しても安全(upsert)。
+- **作業ディレクトリ**: リポジトリのルート(`my-web-project/`)。ブランチ `main`、作業ツリークリーン、
+  `origin` = `git@github.com:shato-dev/headless-cms-site.git`。M2 完了・マージ済み(PR #1, #2)。
+- **次にやること(決定済みの順番)**:
+  1. **M3 — GitHub Actions で Cloudflare Pages へ自動デプロイ**。着手時に Plan Mode で詳細手順を作る。
+     Cloudflare アカウント作成が必要(**無料枠 / カード要否を確認してから着手**)。
+  2. その後、**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
+     おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)。
+- **microCMS**: サービス・API(`works`)作成済み、`.env` にキーあり(git 管理外、再発行済みのキー)。
+  GitHub Actions の Secrets(`MICROCMS_SERVICE_DOMAIN` / `MICROCMS_API_KEY`)にも登録済み — CI の
+  `npm run build` は microCMS に実際にアクセスするため、この Secrets が無いと CI が落ちる(M2 で一度
+  ハマった)。`node --env-file=.env scripts/import-to-microcms.mjs` は再実行しても安全(upsert)。
 - **Node は nvm 管理**(`v24.20.0`)。Bash ツールの各コマンド冒頭で `source ~/.nvm/nvm.sh` が必要
   (非対話シェルは PATH を読まない)。通常のターミナル操作では不要。
 - **`gh` は `/opt/homebrew/bin/gh`**。PATH に無いことがあるので `export PATH="/opt/homebrew/bin:$PATH"` を付ける。

@@ -1,0 +1,10 @@
+{
+  // Cloudflare Workers config: a Worker with no script that only serves
+  // static files from ./dist ("static assets"). account_id is intentionally
+  // absent; CI passes it via the CLOUDFLARE_ACCOUNT_ID secret.
+  "name": "headless-cms-site",
+  "compatibility_date": "2026-09-19",
+  "assets": {
+    "directory": "./dist"
+  }
+}

@@ -38,7 +38,8 @@ M1〜M3 は完了(M2: microCMS 連携の 100 作品サイト、M3: Cloudflare Wo
 公開 URL は <https://headless-cms-site.shato-dev.workers.dev>)。詳細は `PLAN.md` の進捗表と
 「引き継ぎ用メモ」、直近タスクは `TODO.md`。
 
-- 次の M3 残タスク(microCMS Webhook での自動再デプロイ等)を 1 つずつ確認してから、M4 に入る。
+- 次は M4(Docker Compose で PostgreSQL + Meilisearch)。M3 の残り(microCMS Webhook の自動再デプロイ等)は
+  後回し・見送りで決着済み(`PLAN.md` の M3 節)。
 - 以降は `PLAN.md` の順(M4 Docker Compose → M5 PostgreSQL/JSONB → M6 Meilisearch + Workers → M7 OpenSearch)。
 - 各マイルストーンは Plan Mode で方針を出してから着手し、astro-warmup と同じく各ステップに Git 操作
   (コミット / ブランチ / PR / CI)を意図的に混ぜて進める。

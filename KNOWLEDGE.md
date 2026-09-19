@@ -117,7 +117,7 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
   動き、`--yes` は不要。課金ブロック Hook(`wrangler.*--yes`)にも当たらない。
 - **ローカルの `.wrangler/`** は dev 用のキャッシュなので `.gitignore` に追加した。
 - **microCMS の更新は自動では反映されない**: SSG はビルド時にデータを取るので、記事を更新しても再ビルドするまで
-  サイトは古いまま。Webhook で再ビルドを起こす仕組みが M3 の残り。
+  サイトは古いまま。Webhook で再ビルドを起こす仕組みを作れば自動化できるが、今は後回しにしている。
 
 ### M4: Docker Compose でローカル基盤
 

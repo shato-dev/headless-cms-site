@@ -15,7 +15,7 @@
 |---|---|---|---|
 | **M1** | GitHubリポジトリ作成 + Astroプロジェクト初期化(+ 最小 CI) | ✅ 完了(2026-09-09) | `npm create astro`(minimal + TS strict)。repo: <https://github.com/shato-dev/headless-cms-site>(public)。build のみの CI 緑。main ブランチ保護(required check = `build`、`strict:false`、`enforce_admins:false`) |
 | **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | ✅ 完了(2026-09-14) | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。microCMS に100件投入済み、カスタムローダーで取得。**最初の PR 練習(2回)**。サイト機能バックログは下記参照、継続実装 |
-| **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは未実装(下記) |
+| **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは後回し、404 ページ・ubuntu 固定は見送り(下記) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ⬜ 未着手 | ローカル開発基盤。Docker Desktop 起動確認が要る |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | M4 のコンテナを使う。可変・半構造データを JSONB で持つ |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ⬜ 未着手 | 日本語のタイプミス許容検索まで。`../astro-warmup/src/components/Search.astro` が骨組み |
@@ -35,14 +35,17 @@
   main への push で `ci.yml` の `deploy` ジョブが `npx wrangler deploy` を実行(PR では走らない)。
   GitHub Secrets に `CLOUDFLARE_API_TOKEN`(最小権限のトークン `github-actions-headless-cms-site`)/
   `CLOUDFLARE_ACCOUNT_ID` を登録済み。デプロイが権限不足で落ちたら、トークンの値は変えずに権限だけ追加できる。
-  Workers Free プラン(無料・カード不要)。**未実装**: microCMS Webhook → 自動再デプロイ
-  (今は microCMS を更新しても、main に push するまでサイトは変わらない)。
-  `src/pages/404.astro` が無いので、存在しない URL は既定の素の 404。
+  Workers Free プラン(無料・カード不要)。**M3 の残り 3 件の決定(2026-09-19)**:
+  ① microCMS Webhook → 自動再デプロイは**後回し**(今は microCMS を更新しても、main に push するまで
+  サイトは変わらない。必要になったら `repository_dispatch` で実装)、② 専用 404 ページは**やらない**
+  (404 応答自体は返る。素の 404 のまま)、③ `ubuntu-latest` の Ubuntu 26 切り替え(2026-10-19)は
+  **何もしない**(CI が赤くなったら対処。固定するなら `ubuntu-24.04`)。
 - **次にやること(決定済みの順番)**:
-  1. **M4 — Docker Compose で PostgreSQL + Meilisearch をローカル起動**。着手時に Plan Mode で詳細手順を作る。
-     Docker Desktop の起動確認が要る。
-  2. 並行してよい: microCMS Webhook →「記事更新で自動再デプロイ」(M3 の残り。下記)、
-     および**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
+  1. **M4 — Docker Compose で PostgreSQL + Meilisearch をローカル起動**(新チャットで着手)。
+     まず Plan Mode で詳細手順を作る。Docker Desktop の起動確認が要る。どちらのイメージも無料で
+     カード不要。課金が絡むものは無い(Docker Hub の匿名 pull は回数制限あり)。パスワード等は `.env` に置き、
+     `.env.example` にはキー名だけ。ブランチ例: `feat/docker-compose`。
+  2. その後、**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
      おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)。
 - **microCMS**: サービス・API(`works`)作成済み、`.env` にキーあり(git 管理外、再発行済みのキー)。
   GitHub Actions の Secrets(`MICROCMS_SERVICE_DOMAIN` / `MICROCMS_API_KEY`)にも登録済み — CI の
@@ -191,9 +194,12 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
     main への push のみ(PR から Cloudflare トークンに触れさせない)。`concurrency` で同時デプロイを防止。
     `npx wrangler deploy` は API トークン認証で非対話なので `--yes` 不要(課金ブロック Hook に当たらない)。
   - `astro.config.mjs` に `site` を設定(`base` は不要)。
-- **残り(未実装)**: microCMS の Webhook で「記事更新 → GitHub Actions を再実行」(SSG の再ビルド)。
-  GitHub の `repository_dispatch` / `workflow_dispatch` を使う想定。`ci.yml` に該当トリガーを足す + microCMS 側で
-  Webhook 設定(GitHub トークンが必要になるので、権限を絞る)。
+- **見送り・後回し**:
+  - microCMS の Webhook で「記事更新 → GitHub Actions を再実行」(SSG の再ビルド)は**後回し**。
+    やるなら GitHub の `repository_dispatch` を使う。`ci.yml` にトリガーを足し、microCMS 側の Webhook に
+    GitHub の Fine-grained PAT(対象リポジトリ 1 つ・Contents: Read and write のみ)を設定する。
+  - 専用 404 ページ(`404.astro` + `wrangler.jsonc` の `assets.not_found_handling = "404-page"`)は見送り。
+  - `ubuntu-latest` の切り替えへの対応(`ubuntu-24.04` 固定)は不要と判断。
 - **なぜ / 何を学ぶか**: 「push すると本番サイトが自動更新される」CI/CD の最小形。
   astro-warmup の GitHub Pages デプロイとほぼ同じ絵。Secrets の扱い、環境変数の注入。
 - **Git・GitHub**: `ci.yml` 変更を PR で。「PR を出す → CI が回る → マージ → deploy が走る」を体験。

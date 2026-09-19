@@ -12,7 +12,7 @@
 - ヘッドレス CMS: microCMS(Free プラン)
 - DB: PostgreSQL(JSONB を活用)
 - 全文検索: Meilisearch(学習用に OpenSearch もローカルで併用)
-- ホスティング / API: Cloudflare Pages + Workers
+- ホスティング / API: Cloudflare Workers(静的サイトは static assets で配信)
 - コンテナ: Docker / Docker Compose
 - CI/CD: GitHub Actions
 

@@ -22,28 +22,34 @@
 |---|---|
 | Markdown + content collection | microCMS(ヘッドレス CMS)から取得 |
 | クライアント検索(`search.json` + `filter()`) | Meilisearch + Cloudflare Workers の検索 API |
-| GitHub Pages 公開 | Cloudflare Pages 自動デプロイ |
-| `ci.yml`(build チェックのみ) | 同じ + Cloudflare Pages への deploy ジョブ |
+| GitHub Pages 公開 | Cloudflare Workers(static assets)自動デプロイ |
+| `ci.yml`(build チェックのみ) | 同じ + Cloudflare への deploy ジョブ |
 | (なし) | Docker Compose で PostgreSQL + Meilisearch をローカル起動 |
 | (なし) | PostgreSQL + JSONB でメタデータ保存・API 化 |
 | (なし) | OpenSearch はローカル Docker で「仕組みの理解」だけ(運用しない) |
 
-移行時の注意: astro-warmup で苦労した `base` / `import.meta.env.BASE_URL` の扱いは、Cloudflare Pages なら
-公開 URL が `*.pages.dev` か独自ドメインのルートになるため軽くなる。ただし原理(Astro は自分が生成する
+移行時の注意: astro-warmup で苦労した `base` / `import.meta.env.BASE_URL` の扱いは、Cloudflare なら
+公開 URL が `*.workers.dev` か独自ドメインのルートになるため軽くなる。ただし原理(Astro は自分が生成する
 asset URL にしか `base` を足さない、自分で書いた `<a href>` は直さない)は覚えておく。
 
-### ここから最初にやること
+### 現在地と次にやること(2026-09-19 時点)
 
-`PLAN.md` のマイルストーン M1「GitHubリポジトリ作成 + Astroプロジェクト初期化」から着手する。
-まず Plan Mode で `PLAN.md` / `TODO.md` を作り、astro-warmup と同じく各ステップに Git 操作
-(コミット / ブランチ / PR / CI)を意図的に混ぜて進める。
+M1〜M3 は完了(M2: microCMS 連携の 100 作品サイト、M3: Cloudflare Workers への自動デプロイ。
+公開 URL は <https://headless-cms-site.shato-dev.workers.dev>)。詳細は `PLAN.md` の進捗表と
+「引き継ぎ用メモ」、直近タスクは `TODO.md`。
+
+- 次の M3 残タスク(microCMS Webhook での自動再デプロイ等)を 1 つずつ確認してから、M4 に入る。
+- 以降は `PLAN.md` の順(M4 Docker Compose → M5 PostgreSQL/JSONB → M6 Meilisearch + Workers → M7 OpenSearch)。
+- 各マイルストーンは Plan Mode で方針を出してから着手し、astro-warmup と同じく各ステップに Git 操作
+  (コミット / ブランチ / PR / CI)を意図的に混ぜて進める。
 
 ## 技術スタック
 - フロントエンド: Astro
 - ヘッドレス CMS: microCMS(Free プラン)
 - 全文検索: Meilisearch(学習用に OpenSearch もローカル Docker で併用)
 - DB: PostgreSQL(Supabase / Neon の無料プラン、JSONB 型を積極活用)
-- ホスティング / API: Cloudflare Pages + Workers(無料枠)
+- ホスティング / API: Cloudflare Workers(静的サイトは Workers static assets、検索 API も Workers。無料枠)
+  ※ 当初は Pages 想定だったが、Cloudflare が新規プロジェクトに Workers を推奨しているため変更(M3)
 - コンテナ: Docker / Docker Compose
 - CI/CD: GitHub Actions
 - **AWS / AWS CDK はスコープ外。使わない。**

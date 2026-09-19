@@ -21,8 +21,28 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
 ### 全文検索(Meilisearch / OpenSearch)まわり
 <!-- 転置インデックス, analyzer, typo tolerance, ランキング/スコアリング, インデックス投入 -->
 
-### Cloudflare(Pages / Workers)まわり
-<!-- Pages(静的配信 + ビルド), Workers(エッジ関数), wrangler, Secrets, pages.dev -->
+### Cloudflare(Workers)まわり
+- **Workers**: 「世界中の Cloudflare の拠点(エッジ)で動く小さなサーバー関数」。自前サーバーを持たずに
+  API を置ける。M6 の検索 API で使う。
+- **Workers static assets**: 「スクリプトを持たない Worker が、フォルダ内の静的ファイル(`dist/`)だけを配信する」
+  使い方。Astro の静的サイトの公開先になる。静的ファイルへのリクエストは無料。
+- **Cloudflare Pages との関係**: Pages は静的サイト専用のホスティングだったが、Cloudflare は新規には Workers を
+  推奨し、機能も Workers 側に集約する方向(Astro 公式ドキュメントの記述)。コマンドは
+  `wrangler pages deploy` → `wrangler deploy`、URL は `*.pages.dev` → `*.workers.dev` に変わる。
+- **wrangler / `wrangler.jsonc`**: wrangler は Cloudflare の CLI(ビルド結果のアップロード・ローカル確認)。
+  `wrangler.jsonc` は「Worker の名前・配信するフォルダ」などを書く設定ファイル(`package.json` に近い役割)。
+  `npx wrangler dev` でローカルで本番と同じ配信を試せる。
+- **`workers.dev` サブドメイン**: アカウントごとに 1 つ決まる公開ドメインの一部
+  (`<worker名>.<サブドメイン>.workers.dev`)。公開 URL に載るので、実名を入れない。
+- **API トークンと最小権限**: 「パスワードの代わりに CI に渡す、権限を絞った合鍵」。Workers の編集だけを許可し、
+  漏れても被害を小さくする。値は GitHub Secrets にだけ置き、コードやチャットには出さない。
+  `account_id` も `wrangler.jsonc` に書かず Secrets(`CLOUDFLARE_ACCOUNT_ID`)で渡した(public リポジトリのため)。
+- **artifact(GitHub Actions)**: ジョブは別々のマシンで動くので、`build` ジョブが作った `dist/` を
+  `upload-artifact` で保存 → `deploy` ジョブが `download-artifact` で受け取る。「CI で確認したものがそのまま公開される」
+  ことと、microCMS への fetch が 1 回で済むことが利点。
+- **`concurrency`(GitHub Actions)**: 同じ group のジョブを同時に 1 つに制限する。連続 push でデプロイが競合しない。
+- **`if:` で deploy を main の push に限定**: PR では `deploy` が skipped になり、PR から Cloudflare トークンに
+  触れない。
 
 ### Docker / Docker Compose まわり
 <!-- イメージ/コンテナ, Compose のサービス定義, ボリューム永続化, ポート公開, .env -->
@@ -83,7 +103,21 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
 - **microCMS のページング**: List API は1回のリクエストで最大100件(`limit` の上限)。
   100件を超えるコンテンツを全件取得するには `offset` を増やしながら複数回リクエストする必要がある。
 
-### M3: Cloudflare Pages 自動デプロイ
+### M3: Cloudflare(Workers static assets)自動デプロイ
+
+- **計画の変更を調べて判断した**: PLAN は Pages だったが、Astro 公式ドキュメントに「Cloudflare は新規プロジェクトに
+  Workers を推奨」とあったので、Workers static assets を選んだ。Pages の廃止日は公式ページで確認できず、
+  「非推奨寄り」までしか言えない。
+- **流れ**: PR → `build` のみ(`deploy` は skipped)→ マージ → main の push で `build` → `deploy`。
+  初回デプロイで Worker `headless-cms-site` が自動作成された。
+- **静的サイトに `@astrojs/cloudflare` アダプタは不要**: アダプタはサーバー側で動的に描画するとき用。
+  `dist/` をそのまま配信するだけなら `wrangler.jsonc` の `assets.directory` で足りる。
+- **404**: `src/pages/404.astro` が無いと、存在しない URL は既定の素の 404 になる(`wrangler dev` と本番で確認)。
+- **`wrangler deploy` は CI では非対話**: `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` を環境変数で渡すだけで
+  動き、`--yes` は不要。課金ブロック Hook(`wrangler.*--yes`)にも当たらない。
+- **ローカルの `.wrangler/`** は dev 用のキャッシュなので `.gitignore` に追加した。
+- **microCMS の更新は自動では反映されない**: SSG はビルド時にデータを取るので、記事を更新しても再ビルドするまで
+  サイトは古いまま。Webhook で再ビルドを起こす仕組みが M3 の残り。
 
 ### M4: Docker Compose でローカル基盤
 

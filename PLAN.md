@@ -9,13 +9,13 @@
 
 ---
 
-## 進捗(現在地) — 2026-09-14 時点
+## 進捗(現在地) — 2026-09-19 時点
 
 | M | マイルストーン | 状態 | メモ |
 |---|---|---|---|
 | **M1** | GitHubリポジトリ作成 + Astroプロジェクト初期化(+ 最小 CI) | ✅ 完了(2026-09-09) | `npm create astro`(minimal + TS strict)。repo: <https://github.com/shato-dev/headless-cms-site>(public)。build のみの CI 緑。main ブランチ保護(required check = `build`、`strict:false`、`enforce_admins:false`) |
 | **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | ✅ 完了(2026-09-14) | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。microCMS に100件投入済み、カスタムローダーで取得。**最初の PR 練習(2回)**。サイト機能バックログは下記参照、継続実装 |
-| **M3** | GitHub Actions で Cloudflare Pages へ自動デプロイ | ⬜ 未着手 | 「push → 本番更新」の CI/CD 体験。要 Cloudflare アカウント(無料枠 / カード要否を着手前に確認) |
+| **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは未実装(下記) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ⬜ 未着手 | ローカル開発基盤。Docker Desktop 起動確認が要る |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | M4 のコンテナを使う。可変・半構造データを JSONB で持つ |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ⬜ 未着手 | 日本語のタイプミス許容検索まで。`../astro-warmup/src/components/Search.astro` が骨組み |
@@ -29,11 +29,20 @@
 ### 引き継ぎ用メモ(新チャットはまず読む)
 
 - **作業ディレクトリ**: リポジトリのルート(`my-web-project/`)。ブランチ `main`、作業ツリークリーン、
-  `origin` = `git@github.com:shato-dev/headless-cms-site.git`。M2 完了・マージ済み(PR #1, #2)。
+  `origin` = `git@github.com:shato-dev/headless-cms-site.git`。M2 完了・マージ済み(PR #1, #2)、M3 完了(PR #3)。
+- **Cloudflare(M3 で導入)**: 公開 URL は <https://headless-cms-site.shato-dev.workers.dev>。デプロイ先は
+  Pages ではなく **Workers static assets**(`wrangler.jsonc` の `assets.directory = ./dist`)。
+  main への push で `ci.yml` の `deploy` ジョブが `npx wrangler deploy` を実行(PR では走らない)。
+  GitHub Secrets に `CLOUDFLARE_API_TOKEN`(最小権限のトークン `github-actions-headless-cms-site`)/
+  `CLOUDFLARE_ACCOUNT_ID` を登録済み。デプロイが権限不足で落ちたら、トークンの値は変えずに権限だけ追加できる。
+  Workers Free プラン(無料・カード不要)。**未実装**: microCMS Webhook → 自動再デプロイ
+  (今は microCMS を更新しても、main に push するまでサイトは変わらない)。
+  `src/pages/404.astro` が無いので、存在しない URL は既定の素の 404。
 - **次にやること(決定済みの順番)**:
-  1. **M3 — GitHub Actions で Cloudflare Pages へ自動デプロイ**。着手時に Plan Mode で詳細手順を作る。
-     Cloudflare アカウント作成が必要(**無料枠 / カード要否を確認してから着手**)。
-  2. その後、**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
+  1. **M4 — Docker Compose で PostgreSQL + Meilisearch をローカル起動**。着手時に Plan Mode で詳細手順を作る。
+     Docker Desktop の起動確認が要る。
+  2. 並行してよい: microCMS Webhook →「記事更新で自動再デプロイ」(M3 の残り。下記)、
+     および**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
      おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)。
 - **microCMS**: サービス・API(`works`)作成済み、`.env` にキーあり(git 管理外、再発行済みのキー)。
   GitHub Actions の Secrets(`MICROCMS_SERVICE_DOMAIN` / `MICROCMS_API_KEY`)にも登録済み — CI の
@@ -72,16 +81,16 @@
 |---|---|---|
 | Markdown + content collection | microCMS(ヘッドレスCMS)から取得 | M2 |
 | クライアント検索(`search.json` + `filter()`) | Meilisearch + Cloudflare Workers の検索 API | M6 |
-| GitHub Pages 公開 | Cloudflare Pages 自動デプロイ | M3 |
-| `ci.yml`(build チェックのみ) | 同じ + Cloudflare Pages への deploy ジョブ | M1 → M3 |
+| GitHub Pages 公開 | Cloudflare Workers(static assets)自動デプロイ | M3 |
+| `ci.yml`(build チェックのみ) | 同じ + Cloudflare への deploy ジョブ | M1 → M3 |
 | (なし) | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | M4 |
 | (なし) | PostgreSQL + JSONB でメタデータ保存・API 化 | M5 |
 | (なし) | OpenSearch はローカル Docker で「仕組みの理解」だけ(運用しない) | M7 |
 
 **`base` / `import.meta.env.BASE_URL` の扱い**: astro-warmup では GitHub Pages が
-`/<repo>/` サブパス配信のため苦労した。Cloudflare Pages は公開 URL が `*.pages.dev` か
+`/<repo>/` サブパス配信のため苦労した。Cloudflare は公開 URL が `*.workers.dev` か
 独自ドメインの**ルート**になるので `base` は不要(デフォルトのまま)。`site`(絶対 URL の材料 =
-sitemap 等)だけ M3 で設定する。原理(Astro は自分が生成する asset URL にしか `base` を足さない、
+sitemap 等)は M3 で設定済み。原理(Astro は自分が生成する asset URL にしか `base` を足さない、
 自分で書いた `<a href>` は直さない)は覚えておく。
 
 ---
@@ -169,15 +178,22 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
 
 新しいアイデアが浮かんだら、都度この表に追記していく。
 
-### M3 — GitHub Actions で Cloudflare Pages へ自動デプロイ
+### M3 — GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ ✅ 2026-09-19
 
-- **何をするか**:
-  - Cloudflare アカウント作成(**着手前に無料枠 / カード要否を整理して報告**)。Pages プロジェクトを作る。
-  - `astro.config.mjs` に `site: 'https://<project>.pages.dev'`(sitemap 用。`base` は不要)。
-  - `ci.yml` に `deploy` ジョブを追加(main のみ)。Cloudflare Pages への公開は
-    `wrangler pages deploy` か Cloudflare 公式の GitHub 連携。トークンは GitHub Secrets に置く。
-    **`wrangler ...--yes` は課金ブロック Hook に当たるので使わない**。非対話フラグの付け方を確認する。
-  - microCMS の Webhook で「記事更新 → GitHub Actions を再実行」も検討(SSG の再ビルド)。
+> **計画からの変更**: 当初は Cloudflare Pages(`wrangler pages deploy`)の想定だったが、Astro 公式が
+> 「Cloudflare は新規プロジェクトに Workers を推奨」と明記しており、M6 の検索 API も Workers なので
+> **Workers static assets(`wrangler deploy`)に変更**。Pages の廃止日は公式ページで確認できなかった。
+
+- **やったこと**:
+  - Cloudflare アカウント作成(Workers Free、カード不要)。`workers.dev` サブドメインは実名を含まない名前に。
+  - `wrangler.jsonc`(`assets.directory = ./dist`)+ `wrangler` を devDependency に。`account_id` は書かず Secrets で渡す。
+  - `ci.yml` を `build` → `deploy` の 2 ジョブに。`build` が `dist/` を artifact で渡し、`deploy` は
+    main への push のみ(PR から Cloudflare トークンに触れさせない)。`concurrency` で同時デプロイを防止。
+    `npx wrangler deploy` は API トークン認証で非対話なので `--yes` 不要(課金ブロック Hook に当たらない)。
+  - `astro.config.mjs` に `site` を設定(`base` は不要)。
+- **残り(未実装)**: microCMS の Webhook で「記事更新 → GitHub Actions を再実行」(SSG の再ビルド)。
+  GitHub の `repository_dispatch` / `workflow_dispatch` を使う想定。`ci.yml` に該当トリガーを足す + microCMS 側で
+  Webhook 設定(GitHub トークンが必要になるので、権限を絞る)。
 - **なぜ / 何を学ぶか**: 「push すると本番サイトが自動更新される」CI/CD の最小形。
   astro-warmup の GitHub Pages デプロイとほぼ同じ絵。Secrets の扱い、環境変数の注入。
 - **Git・GitHub**: `ci.yml` 変更を PR で。「PR を出す → CI が回る → マージ → deploy が走る」を体験。

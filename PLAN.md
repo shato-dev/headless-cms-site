@@ -9,14 +9,14 @@
 
 ---
 
-## 進捗(現在地) — 2026-09-19 時点
+## 進捗(現在地) — 2026-09-20 時点
 
 | M | マイルストーン | 状態 | メモ |
 |---|---|---|---|
 | **M1** | GitHubリポジトリ作成 + Astroプロジェクト初期化(+ 最小 CI) | ✅ 完了(2026-09-09) | `npm create astro`(minimal + TS strict)。repo: <https://github.com/shato-dev/headless-cms-site>(public)。build のみの CI 緑。main ブランチ保護(required check = `build`、`strict:false`、`enforce_admins:false`) |
 | **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | ✅ 完了(2026-09-14) | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。microCMS に100件投入済み、カスタムローダーで取得。**最初の PR 練習(2回)**。サイト機能バックログは下記参照、継続実装 |
 | **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは後回し、404 ページ・ubuntu 固定は見送り(下記) |
-| **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ⬜ 未着手 | ローカル開発基盤。Docker Desktop 起動確認が要る |
+| **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ✅ 完了(2026-09-20) | `docker-compose.yml`(`postgres:17-alpine` + `getmeili/meilisearch:v1.53`)。無料・カード不要。ポートは `127.0.0.1` のみ公開、named volume で永続化、healthcheck あり。値は `.env`、キー名は `.env.example` |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | M4 のコンテナを使う。可変・半構造データを JSONB で持つ |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ⬜ 未着手 | 日本語のタイプミス許容検索まで。`../astro-warmup/src/components/Search.astro` が骨組み |
 | **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手 | **運用しない**。仕組みの理解のみ |
@@ -41,12 +41,16 @@
   (404 応答自体は返る。素の 404 のまま)、③ `ubuntu-latest` の Ubuntu 26 切り替え(2026-10-19)は
   **何もしない**(CI が赤くなったら対処。固定するなら `ubuntu-24.04`)。
 - **次にやること(決定済みの順番)**:
-  1. **M4 — Docker Compose で PostgreSQL + Meilisearch をローカル起動**(新チャットで着手)。
-     まず Plan Mode で詳細手順を作る。Docker Desktop の起動確認が要る。どちらのイメージも無料で
-     カード不要。課金が絡むものは無い(Docker Hub の匿名 pull は回数制限あり)。パスワード等は `.env` に置き、
-     `.env.example` にはキー名だけ。ブランチ例: `feat/docker-compose`。
+  1. **M5 — PostgreSQL + JSONB でメタデータ保存・API 化**(新チャットで着手)。まず Plan Mode で方針を作る。
+     M4 の Postgres を使う(起動は `docker compose up -d`、Docker Desktop の起動確認が要る)。
+     本番 DB は Supabase か Neon の無料プランだが、**着手前にカード要否・無料枠・休止条件を整理してから選択肢を出す**。
   2. その後、**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
      おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)。
+- **ローカル基盤(M4 で導入)**: `docker compose up -d`(起動)/ `docker compose ps`(状態)/
+  `docker compose logs -f`(ログ)/ `docker compose down`(停止。データは残る)。**`down -v` はボリュームを消す
+  ので、実データが入った後は使わない**。接続先は Postgres = `127.0.0.1:5432`、Meilisearch = `http://127.0.0.1:7700`。
+  ユーザー名・DB 名・パスワード・master key は `.env`(git 管理外)にある。`docker compose config` は展開後の
+  値(パスワード)を表示するので、ログや PR に貼らず `--quiet` を使う。Docker Desktop が落ちていたら先に起動する。
 - **microCMS**: サービス・API(`works`)作成済み、`.env` にキーあり(git 管理外、再発行済みのキー)。
   GitHub Actions の Secrets(`MICROCMS_SERVICE_DOMAIN` / `MICROCMS_API_KEY`)にも登録済み — CI の
   `npm run build` は microCMS に実際にアクセスするため、この Secrets が無いと CI が落ちる(M2 で一度
@@ -204,9 +208,18 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
   astro-warmup の GitHub Pages デプロイとほぼ同じ絵。Secrets の扱い、環境変数の注入。
 - **Git・GitHub**: `ci.yml` 変更を PR で。「PR を出す → CI が回る → マージ → deploy が走る」を体験。
 
-### M4 — Docker Compose で PostgreSQL + Meilisearch をローカル起動
+### M4 — Docker Compose で PostgreSQL + Meilisearch をローカル起動 ✅ 2026-09-20
 
-- **何をするか**: `docker-compose.yml` に `postgres` と `meilisearch` の 2 サービス。
+- **やったこと**:
+  - `docker-compose.yml` に 2 サービス。`postgres:17-alpine`(M5 で使う Supabase / Neon と世代を揃えた)と
+    `getmeili/meilisearch:v1.53`(`latest` ではなくマイナーまで固定)。どちらも無料・カード不要。
+  - ポートは `127.0.0.1` のみ公開(LAN に出さない)、named volume(`pgdata` / `meili_data`)で永続化、
+    healthcheck、`${VAR:?}` で必須変数が無ければ起動しない。`MEILI_NO_ANALYTICS=true` で統計送信を無効化。
+  - `.env.example` にキー名だけ追記、`.env` に乱数の値。
+  - 検証: 両方 `healthy`、JSONB 演算子が動く、Meilisearch は無キー 401 / キー付き 200、`down` → `up` で
+    テストデータが残る、LAN 側 IP からは届かない。テストデータは個別に削除済み(`down -v` は使っていない)。
+- **見送り**: Postgres 18(データ置き場の構成が変わる。必要になったら公式 README で確認)。
+- **元の方針**: `docker-compose.yml` に `postgres` と `meilisearch` の 2 サービス。
   ボリューム永続化、ポート公開、`.env`(パスワード等)。`docker compose up -d` / `down` / `logs`。
   Docker Desktop の起動確認。
 - **なぜ / 何を学ぶか**: コンテナ = 「アプリと依存を丸ごと箱に入れて、どの PC でも同じに動かす」仕組み。

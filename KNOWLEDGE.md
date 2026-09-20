@@ -45,7 +45,34 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
   触れない。
 
 ### Docker / Docker Compose まわり
-<!-- イメージ/コンテナ, Compose のサービス定義, ボリューム永続化, ポート公開, .env -->
+- **イメージ / コンテナ**: イメージは「アプリ + 依存を固めた設計図(読み取り専用)」、コンテナはそれを実行した
+  「動いている実体」。Python でいうクラスとインスタンスに近い。`docker compose down` でコンテナは消えるが、
+  イメージは残る。
+- **Docker Compose**: 複数コンテナ(ここでは postgres + meilisearch)の構成を `docker-compose.yml` に宣言し、
+  `up -d` の 1 コマンドで再現する仕組み。「手順書」ではなく「宣言」なので、誰の PC でも同じ状態になる。
+  `-d` はバックグラウンド起動(detached)。
+- **ボリューム(named volume)**: コンテナの中のデータはコンテナを消すと一緒に消える。DB のようにデータを
+  残したいものは、コンテナの外にあるボリュームに保存する。`down` はボリュームを残し、`down -v` は消す
+  (実データが入った後は `-v` を付けない)。
+- **ポート公開 `127.0.0.1:5432:5432`**: 「Mac の 5432 番 → コンテナの 5432 番」の転送。先頭の `127.0.0.1:` を
+  付けないと `0.0.0.0`(LAN 全体)に公開され、同じ Wi-Fi の他の端末から DB に届いてしまう。付けると自分の Mac
+  からだけ接続できる(LAN 側 IP から届かないことを確認済み)。
+- **`.env` と `${VAR:?メッセージ}`**: Compose は同じフォルダの `.env` を自動で読んで `${...}` に展開する。
+  `:?` を付けると、値が無いときに起動せずエラーで止まる(Python の `os.environ["X"]` が KeyError になるのに近い。
+  `os.environ.get("X")` のように空で通してしまうのを防ぐ)。パスワードは `.env`(git 管理外)にだけ置き、
+  `.env.example` にはキー名だけ。
+- **healthcheck**: 「プロセスが起動した」ではなく「実際に応答できる」ことを Compose が定期確認する仕組み。
+  `docker compose ps` の `(healthy)` がそれ。Postgres は `pg_isready`、Meilisearch は `GET /health`。
+  M5 / M6 で「DB が準備できるまで待つ」ときの目印になる。
+- **タグ固定の理由**: `latest` は pull し直すたびに中身が変わりうる。特に DB / 検索エンジンは、保存データの
+  形式がバージョンに依存するため、意図せず上がると既存ボリュームが読めなくなる恐れがある。`postgres:17-alpine` と
+  `getmeili/meilisearch:v1.53`(マイナーまで)に固定した。Meilisearch は原則として別バージョンのデータを
+  そのまま読めず、更新にはダンプ経由の移行が要る。
+- **alpine**: 軽量な Linux ディストリビューションをベースにしたイメージの版。サイズが小さく pull が速い。
+- **Meilisearch の master key**: 管理系 API を守る鍵。`MEILI_ENV=development` でもキーを設定しておくと、
+  無キーの `/indexes` は 401、キー付きは 200 になる(本番と同じ挙動を練習できる)。M6 では検索専用の
+  権限を絞ったキーを別に発行し、フロントには master key を渡さない。
+- **`MEILI_NO_ANALYTICS`**: Meilisearch は既定で匿名の利用統計を送信する。学習環境でも外部送信は最小にしたいので無効化。
 
 ---
 
@@ -120,6 +147,21 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
   サイトは古いまま。Webhook で再ビルドを起こす仕組みを作れば自動化できるが、今は後回しにしている。
 
 ### M4: Docker Compose でローカル基盤
+
+- **やったこと**: `docker-compose.yml`(postgres + meilisearch)、`.env.example` にキー名追加、`.env` に乱数の
+  パスワード / master key。起動・接続・認証・永続化(`down` → `up` でデータが残る)まで確認した(2026-09-20)。
+- **料金**: 両イメージとも無料・カード不要。Docker Hub の匿名 pull で足りた。
+- **PostgreSQL 17 を選んだ理由**: M5 で使う本番 DB(Supabase / Neon の無料プラン)と世代を揃えるため。
+  なお 18 は Docker 公式イメージでデータの置き場所の構成が変わったとされ、マウント先が
+  `/var/lib/postgresql` になる(未検証。18 に上げるときは公式イメージの README で確認する)。
+  17 の書き方をそのままコピペすると落とし穴になりうる。
+- **ハマりどころ: healthcheck の `$$`**: `docker-compose.yml` の中で `${VAR}` と書くと、Compose が `.env` から
+  先に展開する。コンテナの中のシェルに展開させたいときは `$${VAR}` とエスケープする(Postgres の
+  `pg_isready` で使った)。
+- **ハマりかけ: 出力にパスワードが載る**: `docker compose config` は展開後の値をそのまま表示するので、
+  ログや PR に貼らない。検証では `--quiet` で正しさだけ確認した。
+- **`docker info` は出力が長い**: 冒頭の Client 情報だけでは daemon が動いているか分からない。
+  `Server:` 部分が出るか、`docker info --format '{{.ServerVersion}}'` の終了コードで判断する。
 
 ### M5: PostgreSQL + JSONB
 

@@ -2,15 +2,16 @@
 
 `/clear` する前に更新する。全体像と背景は PLAN.md。
 
-## いま → 次(M4: Docker Compose でローカル基盤)
+## いま → 次(M5: PostgreSQL + JSONB)
 
-新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ)を読み、Plan Mode で M4 の手順を作る。
+新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ)を読み、Plan Mode で M5 の手順を作る。
 
-- [ ] Docker Desktop の起動確認
-- [ ] `docker-compose.yml` に `postgres` と `meilisearch` の 2 サービス(ボリューム永続化・ポート公開)
-- [ ] `.env.example` にパスワード等のキー名を追加(実 `.env` は gitignore 済み)
-- [ ] `docker compose up -d` / `down` / `logs` で起動・停止・ログ確認
-- [ ] ブランチ → PR → CI 緑 → マージ(M4 も Git 操作を混ぜる)
+- [ ] `docker compose up -d` でローカル Postgres を起動(Docker Desktop の起動確認が先)
+- [ ] 本番 DB の選定: Supabase / Neon の無料プランについて、カード要否・無料枠・休止条件を整理してから選ぶ
+- [ ] スキーマ設計(可変・半構造データは JSONB、列に分けるものとの線引き)
+- [ ] マイグレーション SQL を `db/` に置く。`->>` / `@>` / GIN インデックスを試す
+- [ ] 取得用の小さな API(まずローカルの Node / Astro エンドポイント)
+- [ ] ブランチ → PR → CI 緑 → マージ
 
 ## 保留(必要になったら)
 
@@ -24,10 +25,11 @@
 - [ ] 関連作品(同じ著者・同じジャンル)
 - [ ] (余力)既読チェック・お気に入り、文学史年表、ガチャ風演出
 
-## 見送り(2026-09-19 に決定)
+## 見送り
 
-- 専用 404 ページ(404 応答自体は返る)
-- `ubuntu-latest` → `ubuntu-24.04` 固定(2026-10-19 の切り替えは、CI が赤くなったら対処)
+- 専用 404 ページ(2026-09-19 決定。404 応答自体は返る)
+- `ubuntu-latest` → `ubuntu-24.04` 固定(2026-09-19 決定。2026-10-19 の切り替えは、CI が赤くなったら対処)
+- Postgres 18(2026-09-20 決定。17 で開始。18 はデータ置き場の構成が変わるので、必要になったら確認)
 
 ## 完了した直近マイルストーン
 
@@ -37,6 +39,8 @@
   一覧・詳細・著者・ジャンル・検索まで実装済み
 - **M3**(2026-09-19): Cloudflare へ自動デプロイ(PR #3, #4)。Pages ではなく Workers static assets を採用。
   公開 URL: <https://headless-cms-site.shato-dev.workers.dev>。`ci.yml` = `build` → `deploy`(main のみ)
+- **M4**(2026-09-20): Docker Compose で PostgreSQL 17 + Meilisearch v1.53 をローカル起動。
+  `127.0.0.1` のみ公開・named volume で永続化・healthcheck。無料・カード不要
 
 ## 保留・要相談(着手前に料金体系 + カード要否を整理)
 

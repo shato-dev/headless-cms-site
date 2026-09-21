@@ -41,7 +41,6 @@ M5 は完了(用途 = イベントログ。Postgres + JSONB、読み取り専用
 
 - [ ] microCMS Webhook →「記事更新で自動再デプロイ」(`repository_dispatch`。今は microCMS を更新しても
       main に push するまでサイトは変わらない。GitHub トークンの権限は最小に)。詳細は PLAN.md の M3 節
-- [ ] Notion「学習まとめ」への M5 の学び追記(区切りで内容を示してから確認のうえ実施)
 
 ## その後(サイト機能バックログ、詳細は PLAN.md)
 

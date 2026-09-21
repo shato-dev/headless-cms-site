@@ -256,9 +256,10 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
   - 現状イベントを出す機能が無いので、M5 は seed スクリプトの疑似データ。実イベントとの接続は該当機能
     (診断式おすすめ等)の実装時。書き込み API の公開はスコープ外(認証・レート制限が要る)。
   - **Phase 1(PR 1)**: `db/migrations/001_create_events.sql` + `scripts/seed-events.mjs` + `db/queries/events-jsonb.sql`。
-    ローカルで完了・検証済み(2026-09-21)。
+    ローカルで完了・検証済み・PR #8 でマージ済み(2026-09-21)。
   - **Phase 2(PR 2)**: `workers/events-api/`(素の `fetch` ハンドラの Worker、GET のみ、パラメータ化クエリ)。
-    `wrangler dev` + Hyperdrive のローカル接続でローカル Postgres に接続。
+    `wrangler dev` + Hyperdrive のローカル接続でローカル Postgres に接続。ローカルで完了・検証済み(2026-09-21)。
+    起動方法は `workers/events-api/README.md`。`wrangler.jsonc` の Hyperdrive `id` は 0 埋めのダミー(Phase 3 で本物に)。
   - **Phase 3(PR 3、要承認)**: 本番 DB + デプロイ。推奨は Neon Free(2026-09-21 に公式ページで確認: $0/月、
     カード不要と Neon の FAQ に記載、上限超過は課金でなく compute 停止 / 書き込み失敗、5 分アイドルで scale to zero
     し自動再開)。Supabase Free は 1 週間無活動で pause(手動復旧)、Free 登録時のカード要否は Billing FAQ に明記なし。

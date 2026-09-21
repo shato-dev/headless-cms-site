@@ -84,6 +84,7 @@ function generateEvents(works) {
   // Evening-heavy hours (0-23), so daily/hourly aggregation isn't flat.
   const hourWeights = Array.from({ length: 24 }, (_, h) => (h >= 19 && h <= 23 ? 5 : h >= 7 ? 2 : 0.3));
 
+  const now = Date.now();
   const events = [];
   for (let s = 0; s < SESSION_COUNT; s += 1) {
     // The PRNG yields 32 bits per call, so draw twice to fill 12 hex digits.
@@ -92,10 +93,14 @@ function generateEvents(works) {
     const start = new Date();
     start.setUTCDate(start.getUTCDate() - Math.floor(rng() * DAYS_BACK));
     start.setUTCHours(pickWeighted(hourWeights), Math.floor(rng() * 60), Math.floor(rng() * 60), 0);
+    // Picking "today" plus an evening hour can land in the future; move such
+    // sessions back a day so no event is dated after now.
+    if (start.getTime() > now) start.setUTCDate(start.getUTCDate() - 1);
 
     let clock = start.getTime();
     const push = (eventType, workId, payload) => {
-      clock += Math.floor(rng() * 90_000); // events within a session are seconds apart
+      // Events within a session are seconds apart; never past `now`.
+      clock = Math.min(clock + Math.floor(rng() * 90_000), now);
       events.push({
         event_type: eventType,
         work_id: workId,

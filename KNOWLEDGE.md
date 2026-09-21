@@ -195,6 +195,29 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
 - **`EXPLAIN` の予想が外れた**: 「2,000 行程度なら Seq Scan を選ぶはず」と予想したが、`@>` は最初から
   GIN(Bitmap Index Scan)を選んだ。一方、同じ結果を返す `payload->>'referrer' = 'search'` は Seq Scan。
   インデックスが効くかは「行数」より「クエリの書き方(演算子)」で決まる、が今回の収穫。
+- **Phase 2(読み取り専用 Worker API、2026-09-21)**: `workers/events-api/`。`GET /stats/daily`・`/stats/top-works`・
+  `/events` の 3 本。`pg` を Hyperdrive の接続文字列で使う(`nodejs_compat` フラグが要る。`pg` は 8.16.3 以上)。
+  リクエストごとに `new Client` して `finally` で `end()` するのが公式の書き方(実際のプールは Hyperdrive が持つ)。
+- **SQL インジェクション対策は 2 段構え**: ① 値は `$1` `$2` のパラメータで SQL 文と別送する(値が SQL として
+  解釈されない)、② その前に入力を検証(`type` は許可リスト、`limit` / `days` は整数 + 範囲)。
+  実際に `type=work_viewed'; DROP TABLE events;--` を送って 400 で弾かれることを確認した。
+  `session_id` は匿名でも API に出さない(返す列を SELECT で明示する)。
+- **検証してから接続する**: 不正なリクエストで DB 接続を開かないよう、「SQL を組み立てる(検証を含む)」と
+  「実行する」を分けた。最初は接続後に検証していて、コメントの内容と実装が食い違っていた(見直しで発見)。
+- **`pg` の型の癖**: `count(*)` の bigint は文字列、`date` は JS の `Date` で返る。JSON にそのまま出すと
+  `"401"` や日付オブジェクトになるので、SQL 側で `::int` / `to_char` にキャストした。
+- **ローカル開発**: `wrangler dev` では Hyperdrive を使わず、`CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>`
+  という環境変数(または `localConnectionString`)で DB に直接つなぐ。環境変数なら認証情報を設定ファイルに書かずに済む。
+  変数名は計画時に別の名前で覚えていたが、公式ドキュメントで確認して直した。
+- **ハマりどころ: `id` が必須**: `wrangler.jsonc` の hyperdrive には、ローカル開発でも `id` が要る
+  (無いと起動時にエラー)。ローカルでは使われないので 0 埋めのダミーを置き、コメントで明記した。
+  本物の ID は本番の Hyperdrive 設定を作る Phase 3 で入れる。ダミーのままデプロイしても失敗するだけで安全。
+- **seed のバグを API 経由で発見**: `/events` の最新が現在時刻より未来だった。seed が「今日の夜」のイベントも
+  作っていたのが原因(68 件)。セッション開始と各イベントを現在時刻以下に収めて修正。集計 SQL だけ見ていたら
+  気づきにくかった(API で「最新 1 件」を見て発覚)。
+- **`npx tsc` は本物の TypeScript ではない**: プロジェクトに typescript が無い状態で `npx tsc` を実行すると、
+  別の非推奨パッケージ(`tsc`)を取ってきてしまう。`npx --package typescript tsc ...` のようにパッケージを明示する。
+  なお Astro の build は esbuild で TS を型チェックなしに変換するので、型エラーは build では検出されない。
 - **`psql` の実行**: ホストに psql を入れず `docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" ...'`
   で実行する。`$POSTGRES_USER` はコンテナ内の環境変数なので、パスワードをホスト側のコマンドラインに出さずに済む。
   `-T` は擬似端末を割り当てない指定(`< file` で標準入力を渡すときに必要)。

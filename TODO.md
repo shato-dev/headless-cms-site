@@ -6,19 +6,21 @@
 
 新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ + M5 節「M5 の設計と進め方」)を読む。
 
-### Phase 1: ローカル DB + スキーマ + seed + JSONB クエリ(ブランチ `feat/m5-events-schema`)
+### Phase 1: ローカル DB + スキーマ + seed + JSONB クエリ ✅(PR #8 マージ済み)
 - [x] 用途を決める(B. 閲覧・操作イベント)
 - [x] `docker compose up -d` でローカル Postgres 起動
 - [x] `db/migrations/001_create_events.sql`(冪等・2 回適用で確認)
 - [x] `scripts/seed-events.mjs`(seed 行だけ入れ直し、app 行に触れないこと・`down`→`up` で残ることを確認)
 - [x] `db/queries/events-jsonb.sql`(`->>` / `@>` / 配列展開 / 日次集計 / `EXPLAIN`)
 - [x] KNOWLEDGE.md / PLAN.md / `.env.example` 更新
-- [ ] コミット → push → PR → CI 緑 → squash マージ
+- [x] コミット → push → PR #8 → CI 緑 → squash マージ(2026-09-21)
 
-### Phase 2: 読み取り専用 API(PR 2)
-- [ ] `workers/events-api/`(Worker、GET のみ: `/stats/daily` / `/stats/top-works` / `/events`)
-- [ ] `wrangler dev` + Hyperdrive のローカル接続で確認、異常系(不正な type / limit)も確認
-- [ ] `npm run build` が通ること、PR → CI 緑 → マージ
+### Phase 2: 読み取り専用 API(PR 2、ブランチ `feat/m5-events-api`)
+- [x] `workers/events-api/`(Worker、GET のみ: `/stats/daily` / `/stats/top-works` / `/events`)
+- [x] `wrangler dev` + ローカル接続で確認(正常系・不正な type / limit / SQL インジェクション試行・405 / 404)
+- [x] seed の未来日時バグを修正(API 経由で発見)
+- [x] `npm run build` が通ること、型チェック(一回限り)
+- [ ] コミット → push → PR → CI 緑 → マージ(push 前にユーザーの確認)
 
 ### Phase 3: 本番 DB + デプロイ(PR 3、**着手前にユーザーの承認**)
 - [ ] Neon Free(推奨)でプロジェクト作成 — アカウント作成・接続文字列の登録はユーザー自身が行う

@@ -18,7 +18,7 @@
 | **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは後回し、404 ページ・ubuntu 固定は見送り(下記) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ✅ 完了(2026-09-20) | `docker-compose.yml`(`postgres:17-alpine` + `getmeili/meilisearch:v1.53`)。無料・カード不要。ポートは `127.0.0.1` のみ公開、named volume で永続化、healthcheck あり。値は `.env`、キー名は `.env.example` |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ✅ 完了(2026-09-21) | 用途 = 閲覧・操作イベント。`events` テーブル(共通項目は列、詳細は JSONB + GIN)、seed 2,341 件(疑似データ)、読み取り専用 Worker API `events-api`(PR #8, #9, #10)。本番 DB = **Neon Free**(無料・カード不要、Postgres 17、シンガポール)+ Hyperdrive。**Bearer トークン認証**付きで <https://events-api.shato-dev.workers.dev> に手動デプロイ |
-| **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ⬜ 未着手 | 日本語のタイプミス許容検索まで。`../astro-warmup/src/components/Search.astro` が骨組み |
+| **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | 🔄 進行中(2026-09-22 着手) | 置き場所 = **Render Free**(Docker、無料・カード不要)に決定。Phase 1(インデックス設計 + Docker イメージ、`search/`)→ Phase 2(Render に手動デプロイ)→ Phase 3(検索 API Worker)→ Phase 4(`Search.astro` 差し替え)。詳細は M6 節 |
 | **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手 | **運用しない**。仕組みの理解のみ |
 
 継続タスク(番号なし): Claude Code の実践的な使い方に慣れる(CLAUDE.md 構成 / カスタムコマンド /
@@ -283,6 +283,18 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
 
 ### M6 — Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開
 
+- **決定・進め方(2026-09-22、Plan Mode で承認済み)**:
+  - **置き場所 = Render Free(Docker の Web Service)**。Meilisearch Cloud(14 日トライアル後 $23/月〜)/ Fly.io(カード必須 + 従量)/
+    Cloudflare Containers(Workers Paid + 従量)/ Oracle Always Free(登録にカード)を公式ページで比較して除外。Render は
+    **支払い方法を登録しなければ課金されない**(公式 FAQ: 課金が発生する状況になったらサービスを止める)。**Render に支払い方法を追加しない**。
+    サインアップでカードを求められたら中止して相談。制約: 15 分でスリープ・復帰に約 1 分・ディスク揮発。
+  - 揮発ディスクへの対応: 起動のたびに `search/documents.json` + `search/settings.json` からインデックスを作り直す(`search/entrypoint.sh`)。
+    検索専用キーは固定 uid で作り、値は master key と uid から決まるので再起動しても同じ。
+  - 構成: ブラウザ → 検索 API Worker(`workers/search-api/`、公開・CORS 制限・検索専用キーは Worker Secret)→ Render の Meilisearch。
+    Worker は 5 秒でタイムアウトして 503、ブラウザは従来の `search.json` 検索にフォールバック(`src/pages/search.json.js` は残す)。
+  - 日本語 typo tolerance は実測済み(KNOWLEDGE.md の M6 節): 漢字の誤字は救えず、かなの誤字は閾値を下げると一部効く。
+  - **Phase 1**(PR 1): `scripts/build-search-documents.mjs` / `search/{settings.json,documents.json,entrypoint.sh,Dockerfile,README.md}`。
+    512 MB / 0.25 CPU 制限のローカル Docker で検証済み。Phase 2 の Render 手順は `search/README.md`。
 - **何をするか**: M4 の Meilisearch に記事をインデックス投入(ビルド時 or Webhook)。
   Cloudflare Workers に検索 API を置き、フロントから叩く。
   `../astro-warmup/src/components/Search.astro`(クライアントで `search.json` を fetch して `filter()`)

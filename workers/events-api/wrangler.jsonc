@@ -1,0 +1,22 @@
+{
+  // Read-only events API (M5 Phase 2). Separate from the static-assets Worker
+  // in the repo root (wrangler.jsonc), which serves ./dist.
+  "name": "events-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-20",
+  // Required for the pg (node-postgres) driver to run on Workers.
+  "compatibility_flags": ["nodejs_compat"],
+  "hyperdrive": [
+    {
+      // Exposed to the code as env.HYPERDRIVE.
+      "binding": "HYPERDRIVE",
+      // PLACEHOLDER (all zeros): wrangler requires an id, but local dev
+      // ignores it. The connection string comes from the environment variable
+      //   CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
+      // (see workers/events-api/README.md), so no credentials live in this
+      // file. Deploying with this placeholder fails; the real Hyperdrive
+      // config id is added in Phase 3.
+      "id": "00000000000000000000000000000000"
+    }
+  ]
+}

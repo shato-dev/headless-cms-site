@@ -1,0 +1,10 @@
+{
+  "searchableAttributes": ["title", "author", "authorReading", "summary"],
+  "displayedAttributes": ["id", "title", "author"],
+  "filterableAttributes": ["genreTags"],
+  "localizedAttributes": [{ "attributePatterns": ["*"], "locales": ["jpn"] }],
+  "typoTolerance": {
+    "minWordSizeForTypos": { "oneTypo": 3, "twoTypos": 6 },
+    "disableOnAttributes": ["summary"]
+  }
+}

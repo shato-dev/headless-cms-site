@@ -16,7 +16,21 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
 <!-- microCMS, コンテンツモデル, API キー, 下書き/公開, Webhook, ビルド時 fetch vs 実行時 fetch -->
 
 ### PostgreSQL / JSONB まわり
-<!-- JSONB, ->/->>/@>, GIN インデックス, いつ列に分けるか, マイグレーション, Supabase/Neon -->
+- **JSONB**: JSON を分解済みのバイナリ形式で持つ列型。スキーマを固めきれない・種別ごとに形が違うデータを、
+  正規化せず 1 列に入れて後から SQL でクエリできる。(`JSON` 型は文字列のまま保存するので検索が遅く、通常は JSONB を使う)
+- **`->` / `->>` / `#>>`**: JSONB から値を取り出す演算子。`->` は JSONB のまま(文字列なら `"list"` と引用符付き)、
+  `->>` はテキストで返す。`GROUP BY` や比較には `->>`。深い階層は `->` を連鎖するか `#>> '{a,b}'` でパス指定。
+- **`@>`(包含)**: 「左の JSONB が右の断片を含むか」。`payload @> '{"referrer":"search"}'`。GIN インデックスが効く演算子。
+- **GIN インデックス**: 「値 → それを含む行」の転置索引(全文検索と同じ発想)。JSONB の中身での絞り込みを速くする。
+  `jsonb_path_ops` は `@>` 専用で小さく速い。`->>` の等値比較(`payload->>'x' = 'y'`)には**効かない**(式の結果は別物扱い)。
+- **列にするか JSONB にするか**: 毎回 `WHERE` / `GROUP BY` に使う共通項目は列(型・制約・インデックスが素直)、
+  種別ごとに形が違う詳細は JSONB。全レコード共通の項目(生没年など)を JSONB に入れる理由は薄い。
+- **マイグレーション**: スキーマ変更を「番号付きの SQL ファイル」として履歴に残し、順に適用する運用。
+  `IF NOT EXISTS` で冪等(何度流しても壊れない)にしておくと安全。
+- **scale to zero(Neon)**: 一定時間アクセスが無いと compute を自動停止し、次のアクセスで数百 ms で再開する。
+  停止中は計算時間を消費しないので無料枠が持つ。Supabase Free の「1 週間無活動で pause(手動復旧)」とは別物。
+- **Hyperdrive(Cloudflare)**: Workers から外部 DB へ TCP 接続するための、接続プール + クエリキャッシュ。
+  Workers は毎回別の場所・別のプロセスで動くため、素朴に接続するとリクエストごとに DB 接続を張り直してしまうのを避ける。
 
 ### 全文検索(Meilisearch / OpenSearch)まわり
 <!-- 転置インデックス, analyzer, typo tolerance, ランキング/スコアリング, インデックス投入 -->
@@ -164,6 +178,26 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
   `Server:` 部分が出るか、`docker info --format '{{.ServerVersion}}'` の終了コードで判断する。
 
 ### M5: PostgreSQL + JSONB
+
+- **用途の決め方(2026-09-21)**: 「何を入れるか」を先に決めてから設計・DB 選定に進んだ。候補のうち
+  イベントログ(閲覧・おすすめ・診断の記録)を選択。理由は、種別ごとに詳細の形が違い JSONB が自然に効くこと、
+  SQL 集計の経験を活かせること。PLAN.md の初期案(生没年などの拡張メタデータ)は全作品共通の項目で、
+  普通の列で足りる=JSONB の題材として弱いと判断して見送った。
+- **microCMS との役割分担**: 作品の正本は microCMS、Postgres は派生データ(イベント)だけ。`work_id` は
+  microCMS の id を文字列で持つだけで、外部キーは張らない(works テーブルが無い)。
+- **Phase 1 でやったこと**: `db/migrations/001_create_events.sql`(冪等)、`scripts/seed-events.mjs`(疑似データ
+  約 2,300 件、`source='seed'`)、`db/queries/events-jsonb.sql`(学習用クエリ)。
+- **seed の設計**: `source='seed'` の行だけを消して入れ直す(1 トランザクション)ので何度でも実行でき、
+  実データ(`source='app'`)には触れない。`down -v`(ボリューム全消し)を使わずに済む。乱数は種付きの PRNG で
+  再現可能に。全件を 1 本の JSONB パラメータで渡し `jsonb_to_recordset` で展開する(SQL 文字列を組み立てない)。
+- **Node と Python の違い**: DB 接続を開いたままだとプロセスが終了しない(Python はコード末尾で終わる)。
+  `client.end()` を `finally` で必ず呼ぶ。
+- **`EXPLAIN` の予想が外れた**: 「2,000 行程度なら Seq Scan を選ぶはず」と予想したが、`@>` は最初から
+  GIN(Bitmap Index Scan)を選んだ。一方、同じ結果を返す `payload->>'referrer' = 'search'` は Seq Scan。
+  インデックスが効くかは「行数」より「クエリの書き方(演算子)」で決まる、が今回の収穫。
+- **`psql` の実行**: ホストに psql を入れず `docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" ...'`
+  で実行する。`$POSTGRES_USER` はコンテナ内の環境変数なので、パスワードをホスト側のコマンドラインに出さずに済む。
+  `-T` は擬似端末を割り当てない指定(`< file` で標準入力を渡すときに必要)。
 
 ### M6: Meilisearch + Cloudflare Workers
 

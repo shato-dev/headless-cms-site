@@ -1,6 +1,6 @@
 {
-  // Read-only events API (M5 Phase 2). Separate from the static-assets Worker
-  // in the repo root (wrangler.jsonc), which serves ./dist.
+  // Read-only events API (M5). Separate from the static-assets Worker in the
+  // repo root (wrangler.jsonc), which serves ./dist.
   "name": "events-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-20",
@@ -10,13 +10,14 @@
     {
       // Exposed to the code as env.HYPERDRIVE.
       "binding": "HYPERDRIVE",
-      // PLACEHOLDER (all zeros): wrangler requires an id, but local dev
-      // ignores it. The connection string comes from the environment variable
-      //   CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
-      // (see workers/events-api/README.md), so no credentials live in this
-      // file. Deploying with this placeholder fails; the real Hyperdrive
-      // config id is added in Phase 3.
-      "id": "00000000000000000000000000000000"
+      // Hyperdrive configuration "events-db": a read-only Postgres role
+      // (events_reader, SELECT on events only) on Neon. The id is an
+      // identifier, not a secret; the connection string and password live in
+      // Cloudflare, not in this repo.
+      // Local dev (`wrangler dev`) ignores the id and reads the connection
+      // string from CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
+      // (see workers/events-api/README.md).
+      "id": "8d038337bbd941f29eb93699e4d4c12c"
     }
   ]
 }

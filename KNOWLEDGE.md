@@ -218,6 +218,30 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
 - **`npx tsc` は本物の TypeScript ではない**: プロジェクトに typescript が無い状態で `npx tsc` を実行すると、
   別の非推奨パッケージ(`tsc`)を取ってきてしまう。`npx --package typescript tsc ...` のようにパッケージを明示する。
   なお Astro の build は esbuild で TS を型チェックなしに変換するので、型エラーは build では検出されない。
+- **Phase 3(本番 DB + 認証、2026-09-21)**: 本番 DB は Neon Free(Postgres 17、シンガポール)。手順は
+  `workers/events-api/README.md` の「Production setup」。Neon のプロジェクト作成・Hyperdrive 設定の作成・
+  `wrangler login` はユーザー自身が実施(アカウント作成・認証情報の入力は AI がやらない方針)。
+- **Hyperdrive には「プーリング無し(direct)」の接続文字列を使う**: Hyperdrive 自体が接続プールを持つので、
+  Neon 側のプーラー(`-pooler` ホスト)を挟むと二重になる。公式ドキュメントの指示。Neon のサーバーレスドライバも使わず、
+  `pg` で直接つなぐ。
+- **読み取り専用ロール(最小権限)**: 公開 API 用に `events_reader`(`SELECT` のみ + `default_transaction_read_only`)を
+  作り、Hyperdrive にはそれを登録した。API にバグがあっても書き込めない。`has_table_privilege()` で権限を確認できる。
+  Neon のダッシュボードで作るロールは強い権限を持つことがあるため、SQL の `CREATE ROLE` で作った。
+- **Bearer トークン認証**: `Authorization: Bearer <token>` を Worker の Secret(`API_TOKEN`)と比較する。
+  認証を最初に行うので、未認証は全パスで 401(DB に触れない)。トークン未設定なら全拒否(fail closed。
+  未設定を「認証なし」と解釈しない)。クエリ文字列のトークンは受け付けない(URL はログに残りやすい)。
+  比較は SHA-256 のダイジェスト同士を全バイト XOR して定数時間にする(不一致の位置が処理時間に出ない)。
+  ローカルは `.dev.vars`(gitignore 済み)、本番は `wrangler secret put API_TOKEN`。
+- **認証のデメリット(承知の上で採用)**: ブラウザの公開ページから直接呼べない(トークンが見える)/ Worker への大量アクセス
+  自体は防げない(Workers の 1 日 10 万リクエストには数えられる)/ 共有の合言葉なので利用者ごとの失効ができない。
+- **テストで見つけたバグ: `client.end()` でハングする**: DB に接続できないとき、`finally` の `await client.end()` が
+  永遠に待ち、Worker が「ハングした」というランタイムエラーを返していた(こちらの JSON 500 にならない)。
+  接続に成功した場合だけ `end()` を呼ぶ形に修正。正常系だけのテストでは見つからず、DB をわざと届かない
+  接続先にして初めて分かった。あわせて `connectionTimeoutMillis` / `query_timeout`(10 秒)も付けた。
+- **`wrangler dev` の自動再読み込みで落ちることがある**: ローカル状態(SQLite)のロック競合
+  (`SQLITE_BUSY`)で起動し直しになった。コードの問題ではなく、作り直せば直る。
+- **`pg` の SSL 警告**: `sslmode=require` は現状 `verify-full` 扱いで、将来のメジャー版で libpq 準拠(弱い)に変わる予告。
+  今は安全側なので放置。
 - **`psql` の実行**: ホストに psql を入れず `docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" ...'`
   で実行する。`$POSTGRES_USER` はコンテナ内の環境変数なので、パスワードをホスト側のコマンドラインに出さずに済む。
   `-T` は擬似端末を割り当てない指定(`< file` で標準入力を渡すときに必要)。

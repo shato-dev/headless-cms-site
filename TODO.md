@@ -15,17 +15,26 @@
 - [x] KNOWLEDGE.md / PLAN.md / `.env.example` 更新
 - [x] コミット → push → PR #8 → CI 緑 → squash マージ(2026-09-21)
 
-### Phase 2: 読み取り専用 API(PR 2、ブランチ `feat/m5-events-api`)
+### Phase 2: 読み取り専用 API ✅(PR #9 マージ済み)
 - [x] `workers/events-api/`(Worker、GET のみ: `/stats/daily` / `/stats/top-works` / `/events`)
 - [x] `wrangler dev` + ローカル接続で確認(正常系・不正な type / limit / SQL インジェクション試行・405 / 404)
 - [x] seed の未来日時バグを修正(API 経由で発見)
 - [x] `npm run build` が通ること、型チェック(一回限り)
-- [ ] コミット → push → PR → CI 緑 → マージ(push 前にユーザーの確認)
+- [x] コミット → push → PR #9 → CI 緑 → マージ(2026-09-21)
 
-### Phase 3: 本番 DB + デプロイ(PR 3、**着手前にユーザーの承認**)
-- [ ] Neon Free(推奨)でプロジェクト作成 — アカウント作成・接続文字列の登録はユーザー自身が行う
-- [ ] Hyperdrive 設定、Worker のデプロイ方法(CI か手動か)を決める
-- [ ] 公開前点検(接続文字列・絶対パス・メールが無いこと)→「これは公開されます」の確認
+### Phase 3: 本番 DB + デプロイ(ブランチ `feat/m5-events-deploy`)
+- [x] Neon Free でプロジェクト作成(Postgres 17、シンガポール)— ユーザー自身が実施
+- [x] Neon にマイグレーション適用 + seed 投入(疑似データ 2,341 件、約 8 MB)
+- [x] 読み取り専用ロール `events_reader` を作成(SELECT のみ。権限を確認済み)
+- [x] Hyperdrive 設定 `events-db` を作成(ダッシュボード、ユーザー自身が実施)、`wrangler login` 済み
+- [x] `wrangler.jsonc` の Hyperdrive id を本物に置き換え(dry-run で確認)
+- [x] Bearer トークン認証を追加(未認証は 401・未設定は全拒否・16 ケースのテスト)、`client.end()` ハングを修正
+- [ ] コミット → push → PR → CI 緑 → マージ(push 前にユーザーの確認)
+- [ ] マージ後、main から `wrangler deploy`(**公開の直前にユーザーの確認**)
+- [ ] `npx wrangler secret put API_TOKEN`(ユーザー自身。値は非表示入力、パスワードマネージャに保存)。
+      検証用に `.env` へ `EVENTS_API_TOKEN` も追記(AI は値を表示せず curl に渡すだけ)
+- [ ] 公開 URL で検証(未認証 401 / 認証あり 200 / 異常系 / Neon の scale to zero 復帰の初回レイテンシ / Hyperdrive キャッシュ)
+- [ ] PLAN.md の M5 を完了に、`wrangler logout` は任意
 
 ## 保留(必要になったら)
 

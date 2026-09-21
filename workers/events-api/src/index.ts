@@ -10,6 +10,12 @@
 //   /stats/top-works?days=&limit=  most viewed works (days 1-365 default 30, limit 1-50 default 10)
 //   /events?type=&limit=           latest events (limit 1-100, default 20)
 //
+// Authentication: every request needs `Authorization: Bearer <token>`, checked
+// against the API_TOKEN secret (set with `wrangler secret put API_TOKEN`; local
+// dev reads it from .dev.vars). It is checked before anything else, so
+// unauthenticated callers get 401 for every path and never reach the database.
+// If API_TOKEN is not configured the Worker refuses to serve (fail closed).
+//
 // Every query is parameterized ($1, $2, ...): user input is sent to Postgres
 // separately from the SQL text, so it can never be interpreted as SQL.
 // Inputs are also validated up front (allowed types, integer ranges).
@@ -19,6 +25,7 @@ import { Client } from 'pg';
 
 interface Env {
   HYPERDRIVE: { connectionString: string };
+  API_TOKEN?: string;
 }
 
 const EVENT_TYPES = ['work_viewed', 'random_pick', 'quiz_completed'] as const;
@@ -49,6 +56,22 @@ function typeParam(params: URLSearchParams): string | null {
     throw new HttpError(400, `type must be one of: ${EVENT_TYPES.join(', ')}`);
   }
   return raw;
+}
+
+// Compare tokens without leaking, through timing, how much of them matched.
+// Hashing both first gives fixed-length digests, so the loop always runs the
+// same number of steps regardless of the input lengths.
+async function tokenMatches(provided: string, expected: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(provided)),
+    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
+  ]);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i += 1) diff |= x[i] ^ y[i];
+  return diff === 0;
 }
 
 interface Query {
@@ -115,6 +138,15 @@ function buildQuery(url: URL): Query {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (!env.API_TOKEN) {
+      console.error('API_TOKEN is not configured; refusing to serve');
+      return Response.json({ error: 'internal error' }, { status: 500 });
+    }
+    const bearer = /^Bearer\s+(.+)$/i.exec(request.headers.get('Authorization') ?? '');
+    if (!bearer || !(await tokenMatches(bearer[1], env.API_TOKEN))) {
+      return Response.json({ error: 'unauthorized' }, { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } });
+    }
+
     if (request.method !== 'GET') {
       return Response.json({ error: 'method not allowed' }, { status: 405, headers: { Allow: 'GET' } });
     }
@@ -131,9 +163,17 @@ export default {
 
     // A new Client per request is the documented pattern: Hyperdrive keeps the
     // real connection pool, so this is cheap.
-    const client = new Client({ connectionString: env.HYPERDRIVE.connectionString });
+    // The timeouts make an unreachable database fail with our JSON 500 instead
+    // of hanging (Neon waking from scale-to-zero took ~2-3 s in testing).
+    const client = new Client({
+      connectionString: env.HYPERDRIVE.connectionString,
+      connectionTimeoutMillis: 10_000,
+      query_timeout: 10_000,
+    });
+    let connected = false;
     try {
       await client.connect();
+      connected = true;
       const { rows } = await client.query(query.text, query.values);
       return Response.json(rows);
     } catch (err) {
@@ -141,7 +181,9 @@ export default {
       console.error('database error:', err instanceof Error ? err.message : err);
       return Response.json({ error: 'internal error' }, { status: 500 });
     } finally {
-      await client.end().catch(() => {});
+      // end() on a client that never connected waits forever (the Worker then
+      // hangs instead of returning the 500 above), so only close real connections.
+      if (connected) await client.end().catch(() => {});
     }
   },
 };

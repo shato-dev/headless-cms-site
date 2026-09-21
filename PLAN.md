@@ -265,6 +265,10 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
     し自動再開)。Supabase Free は 1 週間無活動で pause(手動復旧)、Free 登録時のカード要否は Billing FAQ に明記なし。
     Workers からは Hyperdrive(Free プランに含まれる、1 日 10 万クエリ、超過はエラーで課金なし)。
     アカウント作成と接続文字列の登録はユーザー自身が行う。
+    **進捗(2026-09-21)**: Neon(Postgres 17、シンガポール)にマイグレーション + seed 済み、読み取り専用ロール
+    `events_reader` と Hyperdrive 設定 `events-db` を作成済み(id は `workers/events-api/wrangler.jsonc`)。
+    公開 API は **Bearer トークン認証**(`API_TOKEN` Secret、未認証は 401、未設定は全拒否)を付けてからデプロイする。
+    デプロイは CI ではなく手動(`wrangler deploy`)。手順は `workers/events-api/README.md` の「Production setup」。
 - **何をするか**: M4 の Postgres に、記事メタデータや解析用データを格納するテーブルを作る。
   可変・半構造なデータは `JSONB` カラムに入れ、`->>` / `@>` / GIN インデックスで検索。
   取得用の小さな API(Cloudflare Workers か、まずはローカルの Node/Astro エンドポイント)を作る。

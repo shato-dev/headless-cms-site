@@ -29,3 +29,6 @@ CLAUDE.local.md
 
 # wrangler local dev state
 .wrangler/
+
+# Worker local secrets (wrangler dev)
+.dev.vars

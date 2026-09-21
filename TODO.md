@@ -2,9 +2,15 @@
 
 `/clear` する前に更新する。全体像と背景は PLAN.md。
 
-## いま(M5: PostgreSQL + JSONB、用途 = イベントログに決定 2026-09-21)
+## いま(M5 完了 2026-09-21 → 次の選択)
 
-新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ + M5 節「M5 の設計と進め方」)を読む。
+M5 は完了(用途 = イベントログ。Postgres + JSONB、読み取り専用の認証付き Worker API を Neon 上で公開)。
+新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ)を読み、次を Plan Mode で決める。
+
+- [ ] **次に何をやるか決める**: サイト機能バックログ(ランダムおすすめ・診断式おすすめ・関連作品。実装時に
+      イベントを Postgres に送る接続も検討)/ M6(Meilisearch + Workers 検索 API)のどちらから着手するか
+- [ ] Notion「学習まとめ」に M5 の学びを追記(内容を示してから確認のうえ実施)
+
 
 ### Phase 1: ローカル DB + スキーマ + seed + JSONB クエリ ✅(PR #8 マージ済み)
 - [x] 用途を決める(B. 閲覧・操作イベント)
@@ -22,19 +28,14 @@
 - [x] `npm run build` が通ること、型チェック(一回限り)
 - [x] コミット → push → PR #9 → CI 緑 → マージ(2026-09-21)
 
-### Phase 3: 本番 DB + デプロイ(ブランチ `feat/m5-events-deploy`)
-- [x] Neon Free でプロジェクト作成(Postgres 17、シンガポール)— ユーザー自身が実施
-- [x] Neon にマイグレーション適用 + seed 投入(疑似データ 2,341 件、約 8 MB)
-- [x] 読み取り専用ロール `events_reader` を作成(SELECT のみ。権限を確認済み)
-- [x] Hyperdrive 設定 `events-db` を作成(ダッシュボード、ユーザー自身が実施)、`wrangler login` 済み
-- [x] `wrangler.jsonc` の Hyperdrive id を本物に置き換え(dry-run で確認)
-- [x] Bearer トークン認証を追加(未認証は 401・未設定は全拒否・16 ケースのテスト)、`client.end()` ハングを修正
-- [ ] コミット → push → PR → CI 緑 → マージ(push 前にユーザーの確認)
-- [ ] マージ後、main から `wrangler deploy`(**公開の直前にユーザーの確認**)
-- [ ] `npx wrangler secret put API_TOKEN`(ユーザー自身。値は非表示入力、パスワードマネージャに保存)。
-      検証用に `.env` へ `EVENTS_API_TOKEN` も追記(AI は値を表示せず curl に渡すだけ)
-- [ ] 公開 URL で検証(未認証 401 / 認証あり 200 / 異常系 / Neon の scale to zero 復帰の初回レイテンシ / Hyperdrive キャッシュ)
-- [ ] PLAN.md の M5 を完了に、`wrangler logout` は任意
+### Phase 3: 本番 DB + デプロイ ✅(PR #10 マージ済み、2026-09-21 デプロイ)
+- [x] Neon Free(Postgres 17、シンガポール)+ 読み取り専用ロール `events_reader` + Hyperdrive 設定 `events-db`
+- [x] Bearer トークン認証を追加、`client.end()` ハングを修正、PR #10 マージ
+- [x] main から `wrangler deploy` → <https://events-api.shato-dev.workers.dev>(トークン設定前は全リクエスト 500 = fail closed)
+- [x] `API_TOKEN` を Secret に登録(ユーザー自身)、検証用に `.env` へ `EVENTS_API_TOKEN`
+- [x] 公開 URL で 18 ケース検証(未認証 401 / 認証あり 200 / 400・404・405 / `session_id` 非露出 / 件数一致)
+- [x] Neon の復帰レイテンシを計測(KNOWLEDGE.md の M5 節)
+- [ ] (任意)`npx wrangler logout` でローカルの Cloudflare ログインを解除
 
 ## 保留(必要になったら)
 

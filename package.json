@@ -18,6 +18,7 @@
     "esbuild": true
   },
   "devDependencies": {
+    "pg": "^8.23.0",
     "wrangler": "^4.135.0"
   }
 }

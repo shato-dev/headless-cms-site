@@ -17,7 +17,7 @@
 | **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | ✅ 完了(2026-09-14) | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。microCMS に100件投入済み、カスタムローダーで取得。**最初の PR 練習(2回)**。サイト機能バックログは下記参照、継続実装 |
 | **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは後回し、404 ページ・ubuntu 固定は見送り(下記) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ✅ 完了(2026-09-20) | `docker-compose.yml`(`postgres:17-alpine` + `getmeili/meilisearch:v1.53`)。無料・カード不要。ポートは `127.0.0.1` のみ公開、named volume で永続化、healthcheck あり。値は `.env`、キー名は `.env.example` |
-| **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ⬜ 未着手 | M4 のコンテナを使う。可変・半構造データを JSONB で持つ |
+| **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | 🟡 進行中(2026-09-21 着手) | **用途 = B(閲覧・操作イベント)に決定**。Phase 1(ローカル: スキーマ + seed + JSONB クエリ)→ Phase 2(読み取り専用 Worker API)→ Phase 3(本番 DB + デプロイ、要承認)。M4 のコンテナを使う |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ⬜ 未着手 | 日本語のタイプミス許容検索まで。`../astro-warmup/src/components/Search.astro` が骨組み |
 | **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手 | **運用しない**。仕組みの理解のみ |
 
@@ -41,11 +41,9 @@
   (404 応答自体は返る。素の 404 のまま)、③ `ubuntu-latest` の Ubuntu 26 切り替え(2026-10-19)は
   **何もしない**(CI が赤くなったら対処。固定するなら `ubuntu-24.04`)。
 - **次にやること(決定済みの順番)**:
-  1. **M5 — PostgreSQL + JSONB でメタデータ保存・API 化**(新チャットで着手)。まず Plan Mode で方針を作る。
-     **最初のステップは「Postgres に何のデータを入れ、何のために使うか(用途)」を決めること**
-     (2026-09-20 に判断: 用途が曖昧なままではテーブル設計も JSONB の使いどころも本番 DB の選定基準も決まらない)。
-     候補と論点は下記 M5 節の「用途の候補」。用途が決まってから設計 → DB 選定(カード要否・無料枠・休止条件を
-     整理してから選択肢を出す)の順に進める。
+  1. **M5 — PostgreSQL + JSONB でメタデータ保存・API 化**(進行中)。**用途 = イベントログに決定(2026-09-21)**。
+     設計とフェーズ(Phase 1 ローカル → Phase 2 読み取り専用 Worker API → Phase 3 本番 DB + デプロイ)は
+     下記 M5 節「M5 の設計と進め方」。現在地は `TODO.md`。Phase 3(本番 DB)はユーザーの承認後に着手。
      M4 の Postgres を使う(起動は `docker compose up -d`、Docker Desktop の起動確認が要る)。
   2. その後、**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
      おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)。
@@ -231,12 +229,17 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
 
 ### M5 — PostgreSQL + JSONB でメタデータ保存・API 化
 
+- **決定(2026-09-21): 用途 = B. 閲覧・操作ログ(イベント)**。理由: イベントは種別ごとに詳細(payload)の形が
+  違い JSONB が自然に効く / SQL 集計の経験を活かせる / 「解析用データの整備」に近い。設計・フェーズは下の
+  「M5 の設計と進め方」。以下の A〜D は検討時の候補として残す。
 - **最初に決めること = 用途**(2026-09-20 追記。下記「何をするか」の「記事メタデータや解析用データ」は
   元の方針で曖昧だった)。コンテンツ本体の正本は microCMS なので、Postgres と役割を重複させない。
   用途の候補(たたき台。新チャットで絞り、他に案があれば足す):
   - **A. 作品の拡張メタデータ**: 生没年・発表年・文字数・読了目安など、書誌 CSV にあるが `works.json` /
-    microCMS に無い項目。項目が作品ごとに揃わないので JSONB 向き。文学史年表(サイト機能バックログ)の
-    データ拡張と直結。microCMS = 編集する正本、Postgres = 派生・補足データ、という切り分け。
+    microCMS に無い項目。文学史年表(サイト機能バックログ)のデータ拡張と直結。microCMS = 編集する正本、
+    Postgres = 派生・補足データ、という切り分け。**(2026-09-21 訂正)** 当初「項目が作品ごとに揃わないので
+    JSONB 向き」と書いたが誤り。生没年・発表年・文字数は全作品共通の項目で、普通の列で足りる。JSONB の題材としては弱い。
+    書誌 CSV はリポジトリに無く、外部取得 + ライセンス確認も要る。
   - **B. 閲覧・操作ログ(イベント)**: 診断式おすすめの回答、ランダムおすすめの結果、閲覧などを JSONB の
     イベントとして貯める。データ分析経験(SQL / 集計)を活かせ、「解析用データ」「データ解析環境の整備」に近い。
   - **C. 既読・お気に入り**: 現状バックログは `localStorage` のみ。端末をまたぐならユーザー識別(認証)が要り
@@ -245,6 +248,22 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
   - **共通の論点**: 本番 DB を Cloudflare Workers から叩く経路(TCP ソケット直接 / Hyperdrive / HTTP ドライバ /
     DB 側の REST など複数ありそうだが、未調査。各経路の無料枠とカード要否を含めて一次情報で確認する)。
     書き込みを伴う用途は、公開 API の悪用対策(認証・レート制限)も設計に入れる。
+- **M5 の設計と進め方(2026-09-21 決定)**: 詳細は Plan Mode で作成・承認済み。
+  - スキーマ: `events(id, event_type, work_id, session_id, occurred_at, source, payload jsonb)`。共通項目は列、
+    種別ごとの詳細は `payload`。`work_id` は microCMS の id(FK なし)。`session_id` は匿名のランダム ID
+    (IP・UA・実名は保存しない)。`source='seed'` で疑似データを区別。索引は `(event_type, occurred_at)` の B-tree
+    + `payload` の GIN(`jsonb_path_ops`)。
+  - 現状イベントを出す機能が無いので、M5 は seed スクリプトの疑似データ。実イベントとの接続は該当機能
+    (診断式おすすめ等)の実装時。書き込み API の公開はスコープ外(認証・レート制限が要る)。
+  - **Phase 1(PR 1)**: `db/migrations/001_create_events.sql` + `scripts/seed-events.mjs` + `db/queries/events-jsonb.sql`。
+    ローカルで完了・検証済み(2026-09-21)。
+  - **Phase 2(PR 2)**: `workers/events-api/`(素の `fetch` ハンドラの Worker、GET のみ、パラメータ化クエリ)。
+    `wrangler dev` + Hyperdrive のローカル接続でローカル Postgres に接続。
+  - **Phase 3(PR 3、要承認)**: 本番 DB + デプロイ。推奨は Neon Free(2026-09-21 に公式ページで確認: $0/月、
+    カード不要と Neon の FAQ に記載、上限超過は課金でなく compute 停止 / 書き込み失敗、5 分アイドルで scale to zero
+    し自動再開)。Supabase Free は 1 週間無活動で pause(手動復旧)、Free 登録時のカード要否は Billing FAQ に明記なし。
+    Workers からは Hyperdrive(Free プランに含まれる、1 日 10 万クエリ、超過はエラーで課金なし)。
+    アカウント作成と接続文字列の登録はユーザー自身が行う。
 - **何をするか**: M4 の Postgres に、記事メタデータや解析用データを格納するテーブルを作る。
   可変・半構造なデータは `JSONB` カラムに入れ、`->>` / `@>` / GIN インデックスで検索。
   取得用の小さな API(Cloudflare Workers か、まずはローカルの Node/Astro エンドポイント)を作る。

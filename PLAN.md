@@ -9,7 +9,7 @@
 
 ---
 
-## 進捗(現在地) — 2026-09-20 時点
+## 進捗(現在地) — 2026-09-21 時点
 
 | M | マイルストーン | 状態 | メモ |
 |---|---|---|---|
@@ -17,7 +17,7 @@
 | **M2** | 青空文庫100作品サイト: microCMS でコンテンツモデル設計 → Astro から取得 → 一覧/個別/著者/ジャンル/検索 | ✅ 完了(2026-09-14) | 題材確定・著作権監査完了(`docs/aozora-100-audit-report.md`)。microCMS に100件投入済み、カスタムローダーで取得。**最初の PR 練習(2回)**。サイト機能バックログは下記参照、継続実装 |
 | **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは後回し、404 ページ・ubuntu 固定は見送り(下記) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ✅ 完了(2026-09-20) | `docker-compose.yml`(`postgres:17-alpine` + `getmeili/meilisearch:v1.53`)。無料・カード不要。ポートは `127.0.0.1` のみ公開、named volume で永続化、healthcheck あり。値は `.env`、キー名は `.env.example` |
-| **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | 🟡 進行中(2026-09-21 着手) | **用途 = B(閲覧・操作イベント)に決定**。Phase 1(ローカル: スキーマ + seed + JSONB クエリ)→ Phase 2(読み取り専用 Worker API)→ Phase 3(本番 DB + デプロイ、要承認)。M4 のコンテナを使う |
+| **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ✅ 完了(2026-09-21) | 用途 = 閲覧・操作イベント。`events` テーブル(共通項目は列、詳細は JSONB + GIN)、seed 2,341 件(疑似データ)、読み取り専用 Worker API `events-api`(PR #8, #9, #10)。本番 DB = **Neon Free**(無料・カード不要、Postgres 17、シンガポール)+ Hyperdrive。**Bearer トークン認証**付きで <https://events-api.shato-dev.workers.dev> に手動デプロイ |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ⬜ 未着手 | 日本語のタイプミス許容検索まで。`../astro-warmup/src/components/Search.astro` が骨組み |
 | **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手 | **運用しない**。仕組みの理解のみ |
 
@@ -41,12 +41,15 @@
   (404 応答自体は返る。素の 404 のまま)、③ `ubuntu-latest` の Ubuntu 26 切り替え(2026-10-19)は
   **何もしない**(CI が赤くなったら対処。固定するなら `ubuntu-24.04`)。
 - **次にやること(決定済みの順番)**:
-  1. **M5 — PostgreSQL + JSONB でメタデータ保存・API 化**(進行中)。**用途 = イベントログに決定(2026-09-21)**。
-     設計とフェーズ(Phase 1 ローカル → Phase 2 読み取り専用 Worker API → Phase 3 本番 DB + デプロイ)は
-     下記 M5 節「M5 の設計と進め方」。現在地は `TODO.md`。Phase 3(本番 DB)はユーザーの承認後に着手。
-     M4 の Postgres を使う(起動は `docker compose up -d`、Docker Desktop の起動確認が要る)。
-  2. その後、**サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
-     おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)。
+  1. **M5 は完了(2026-09-21)**。設計・経緯は下記 M5 節、運用手順は `workers/events-api/README.md`。
+     **events-api の運用メモ**: 公開 URL <https://events-api.shato-dev.workers.dev>(要 Bearer トークン)。
+     トークンはパスワードマネージャと、ローカルの `.env`(`EVENTS_API_TOKEN`、curl 用)にある。Worker 側は
+     `wrangler secret put API_TOKEN`(再発行は上書き)。デプロイは手動(`workers/events-api` で `npx wrangler deploy`、
+     要 `wrangler login`。CI の `deploy` ジョブの対象外)。DB は Neon(オーナー接続文字列は `.env` の `DATABASE_URL`、
+     seed / マイグレーションは `--allow-remote` / `docker compose exec -e DATABASE_URL ... psql`)。Hyperdrive の
+     ID は `wrangler hyperdrive list` で分かる(ダッシュボードの設定タブには出なかった)。
+  2. **次の候補(着手前に Plan Mode で決める)**: **サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
+     おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)、または **M6**(Meilisearch + Workers 検索 API)。
 - **ローカル基盤(M4 で導入)**: `docker compose up -d`(起動)/ `docker compose ps`(状態)/
   `docker compose logs -f`(ログ)/ `docker compose down`(停止。データは残る)。**`down -v` はボリュームを消す
   ので、実データが入った後は使わない**。接続先は Postgres = `127.0.0.1:5432`、Meilisearch = `http://127.0.0.1:7700`。

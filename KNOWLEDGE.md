@@ -242,6 +242,23 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
   (`SQLITE_BUSY`)で起動し直しになった。コードの問題ではなく、作り直せば直る。
 - **`pg` の SSL 警告**: `sslmode=require` は現状 `verify-full` 扱いで、将来のメジャー版で libpq 準拠(弱い)に変わる予告。
   今は安全側なので放置。
+- **デプロイと公開後の検証(2026-09-21)**: `wrangler deploy` は手動(`workers/events-api` で実行)。順序は
+  「デプロイ → `wrangler secret put API_TOKEN`」にした。コードが fail closed なので、Secret を入れるまでの間は
+  全リクエストが 500 で、認証なしで開いている時間が生じない。公開 URL で 18 ケース(未認証 401 / 認証あり 200 /
+  400・404・405 / `session_id` 非露出)を確認し、API 経由の日次件数の合計が Neon の 2,341 件と一致した。
+- **Neon の復帰レイテンシ(実測)**: 6.5 分アイドル後の最初のリクエストが約 0.9 秒、続く 2 回が約 0.15〜0.2 秒
+  (手元 Mac → Worker → Hyperdrive → シンガポールの Neon)。直接接続で最初にテストしたときは約 2.3 秒
+  (TLS ハンドシェイク込み)だった。0.9 秒の内訳(Worker のコールドスタート / Hyperdrive の接続確立 / Neon の起動)は
+  分けて測っていない。2 回目以降の速さが「Hyperdrive のキャッシュ」か「DB が温まっている」だけかも、
+  レイテンシからは区別できなかった(キャッシュの効果は未検証。ダッシュボードの Hyperdrive メトリクスで見られるはず)。
+- **Cloudflare ダッシュボードの罠**: Hyperdrive の画面には「PlanetScale データベースを作成」という目立つ黒いボタンが
+  あるが、これは Cloudflare 経由の従量課金になる(Hyperdrive の料金ページに記載)。押すのは青い「データベースを接続」
+  →「パブリック データベースに接続する」。従量課金は使わない方針なので避けた。
+- **Hyperdrive の ID の調べ方**: ダッシュボードの「設定」タブには 32 桁の ID が出なかった。`wrangler login` の
+  あと `npx wrangler hyperdrive list` で id / 名前 / ユーザー / ホストが表で出る(パスワードは出ない)。
+  `wrangler login` は OAuth(ブラウザで Allow)で、トークンは PC のローカルに保存される。`wrangler logout` で解除できる。
+- **秘密を私(AI)に見せずに検証する方法**: 検証用トークンはローカルの `.env`(gitignore 済み)に置き、AI は値を
+  表示せず curl の引数に渡すだけにした。Secret の登録・接続文字列の入力・アカウント作成はユーザー自身が実施した。
 - **`psql` の実行**: ホストに psql を入れず `docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" ...'`
   で実行する。`$POSTGRES_USER` はコンテナ内の環境変数なので、パスワードをホスト側のコマンドラインに出さずに済む。
   `-T` は擬似端末を割り当てない指定(`< file` で標準入力を渡すときに必要)。

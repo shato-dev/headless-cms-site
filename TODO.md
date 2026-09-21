@@ -9,7 +9,7 @@ M5 は完了(用途 = イベントログ。Postgres + JSONB、読み取り専用
 
 - [ ] **次に何をやるか決める**: サイト機能バックログ(ランダムおすすめ・診断式おすすめ・関連作品。実装時に
       イベントを Postgres に送る接続も検討)/ M6(Meilisearch + Workers 検索 API)のどちらから着手するか
-- [ ] Notion「学習まとめ」に M5 の学びを追記(内容を示してから確認のうえ実施)
+- [x] Notion「学習まとめ」に M5 の学びを追記(2026-09-21。`my-web-project` 配下に M5 の子ページ、TODO データベースの M4・M5 を完了に更新。M4 の学習ノート用の子ページは未作成)
 
 
 ### Phase 1: ローカル DB + スキーマ + seed + JSONB クエリ ✅(PR #8 マージ済み)
@@ -35,7 +35,7 @@ M5 は完了(用途 = イベントログ。Postgres + JSONB、読み取り専用
 - [x] `API_TOKEN` を Secret に登録(ユーザー自身)、検証用に `.env` へ `EVENTS_API_TOKEN`
 - [x] 公開 URL で 18 ケース検証(未認証 401 / 認証あり 200 / 400・404・405 / `session_id` 非露出 / 件数一致)
 - [x] Neon の復帰レイテンシを計測(KNOWLEDGE.md の M5 節)
-- [ ] (任意)`npx wrangler logout` でローカルの Cloudflare ログインを解除
+- [x] `npx wrangler logout` でローカルの Cloudflare ログインを解除(2026-09-21。次回のデプロイ前に `npx wrangler login` が要る)
 
 ## 保留(必要になったら)
 

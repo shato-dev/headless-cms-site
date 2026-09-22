@@ -293,8 +293,17 @@ M2 以降の細部は着手時に Plan Mode で詰める(ここには方針ま�
   - 構成: ブラウザ → 検索 API Worker(`workers/search-api/`、公開・CORS 制限・検索専用キーは Worker Secret)→ Render の Meilisearch。
     Worker は 5 秒でタイムアウトして 503、ブラウザは従来の `search.json` 検索にフォールバック(`src/pages/search.json.js` は残す)。
   - 日本語 typo tolerance は実測済み(KNOWLEDGE.md の M6 節): 漢字の誤字は救えず、かなの誤字は閾値を下げると一部効く。
-  - **Phase 1**(PR 1): `scripts/build-search-documents.mjs` / `search/{settings.json,documents.json,entrypoint.sh,Dockerfile,README.md}`。
-    512 MB / 0.25 CPU 制限のローカル Docker で検証済み。Phase 2 の Render 手順は `search/README.md`。
+  - **Phase 1**(PR #14): `scripts/build-search-documents.mjs` / `search/{settings.json,documents.json,entrypoint.sh,Dockerfile,README.md}`。
+    512 MB / 0.25 CPU 制限のローカル Docker で検証済み。
+  - **Phase 2**(2026-09-22、手動): Render で Web Service `aozora-search` を作成(Public Git Repository・Docker・
+    Root Directory `search`・**Free プラン**・支払い方法は未登録)。`MEILI_MASTER_KEY` は Render の環境変数に
+    ダッシュボードで登録(ユーザーが Generate)。公開 URL: <https://aozora-search.onrender.com>。`/health` 200、
+    無認証検索 401 を確認、検索専用キーを `curl .../keys` で取得しユーザーがパスワードマネージャに保存。
+  - **Phase 3**(PR #15、2026-09-22): `workers/search-api/`(認証なし・CORS・検索専用キー・5 秒タイムアウト・
+    `/warmup` で背後から起こす)。ローカル(`wrangler dev` + ローカル Meilisearch)で正常系・異常系
+    (400/404/405/CORS/Meilisearch 停止時 503/不正キー時 503)を検証後、`wrangler login`(ユーザー)→
+    `wrangler deploy` → `wrangler secret put MEILI_SEARCH_KEY`(ユーザーが検索専用キーを入力)→ `wrangler logout`
+    の順で本番デプロイ。公開 URL: <https://search-api.shato-dev.workers.dev>。本番で同じ検証項目を再確認済み。
 - **何をするか**: M4 の Meilisearch に記事をインデックス投入(ビルド時 or Webhook)。
   Cloudflare Workers に検索 API を置き、フロントから叩く。
   `../astro-warmup/src/components/Search.astro`(クライアントで `search.json` を fetch して `filter()`)

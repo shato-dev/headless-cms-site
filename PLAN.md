@@ -18,8 +18,8 @@
 | **M3** | GitHub Actions で Cloudflare(Workers static assets)へ自動デプロイ | ✅ 完了(2026-09-19) | main への push で自動公開: <https://headless-cms-site.shato-dev.workers.dev>(PR #3)。**Pages ではなく Workers を採用**(Astro 公式が新規には Workers 推奨、M6 も Workers のため)。`ci.yml` = `build` → `deploy`(main のみ、`npx wrangler deploy`)。無料・カード不要。microCMS Webhook での自動再デプロイは後回し、404 ページ・ubuntu 固定は見送り(下記) |
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ✅ 完了(2026-09-20) | `docker-compose.yml`(`postgres:17-alpine` + `getmeili/meilisearch:v1.53`)。無料・カード不要。ポートは `127.0.0.1` のみ公開、named volume で永続化、healthcheck あり。値は `.env`、キー名は `.env.example` |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ✅ 完了(2026-09-21) | 用途 = 閲覧・操作イベント。`events` テーブル(共通項目は列、詳細は JSONB + GIN)、seed 2,341 件(疑似データ)、読み取り専用 Worker API `events-api`(PR #8, #9, #10)。本番 DB = **Neon Free**(無料・カード不要、Postgres 17、シンガポール)+ Hyperdrive。**Bearer トークン認証**付きで <https://events-api.shato-dev.workers.dev> に手動デプロイ |
-| **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | 🔄 進行中(2026-09-22 着手) | 置き場所 = **Render Free**(Docker、無料・カード不要)に決定。Phase 1(インデックス設計 + Docker イメージ、`search/`)→ Phase 2(Render に手動デプロイ)→ Phase 3(検索 API Worker)→ Phase 4(`Search.astro` 差し替え)。詳細は M6 節 |
-| **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手 | **運用しない**。仕組みの理解のみ |
+| **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ✅ 完了(2026-09-22) | 置き場所 = **Render Free**(Docker、無料・カード不要)。Meilisearch <https://aozora-search.onrender.com> + 検索 API <https://search-api.shato-dev.workers.dev>。`Search.astro` は本番 API を使い、Render スリープ時は `search.json` の簡易検索にフォールバック(PR #14, #15, #16, #17)。詳細は M6 節 |
+| **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手(次の候補) | **運用しない**。仕組みの理解のみ |
 
 継続タスク(番号なし): Claude Code の実践的な使い方に慣れる(CLAUDE.md 構成 / カスタムコマンド /
 サブエージェント / Hook)。各マイルストーンの中で都度触れる。
@@ -48,8 +48,18 @@
      要 `wrangler login`。CI の `deploy` ジョブの対象外)。DB は Neon(オーナー接続文字列は `.env` の `DATABASE_URL`、
      seed / マイグレーションは `--allow-remote` / `docker compose exec -e DATABASE_URL ... psql`)。Hyperdrive の
      ID は `wrangler hyperdrive list` で分かる(ダッシュボードの設定タブには出なかった)。
-  2. **次の候補(着手前に Plan Mode で決める)**: **サイト機能バックログ**(下記「サイト機能バックログ」節。ランダムおすすめ・診断式
-     おすすめ・関連作品など。著者ページ・検索は M2 で実装済み)、または **M6**(Meilisearch + Workers 検索 API)。
+  2. **M6 は完了(2026-09-22)**。設計・経緯は下記 M6 節。
+     **search-api / aozora-search の運用メモ**: 検索 API <https://search-api.shato-dev.workers.dev>(認証なし・公開、
+     CORS で読める相手を制限)。Meilisearch は Render Free の Web Service `aozora-search`
+     (<https://aozora-search.onrender.com>、Docker、Root Directory `search`)。`MEILI_MASTER_KEY` は Render の
+     環境変数(ダッシュボードで Generate、パスワードマネージャに保存済み)。検索専用キーは `curl .../keys` で取得し
+     パスワードマネージャに保存、Worker には `wrangler secret put MEILI_SEARCH_KEY`(再発行は上書き)。
+     ドキュメント更新(microCMS の内容が変わったら)は `node --env-file=.env scripts/build-search-documents.mjs` →
+     `search/documents.json` を commit → PR → マージで Render に反映(Render の auto-deploy 前提。未設定なら
+     手動で "Manual Deploy")。デプロイは手動(`workers/search-api` で `npx wrangler deploy`、要 `wrangler login`。
+     CI の `deploy` ジョブの対象外)。Render に**支払い方法を追加しない**運用を継続する。
+  3. **次の候補(着手前に Plan Mode で決める)**: **M7**(OpenSearch を概念理解のみ、運用しない)、または
+     **サイト機能バックログ**(下記節。ランダムおすすめ・診断式おすすめ・関連作品など)。
 - **ローカル基盤(M4 で導入)**: `docker compose up -d`(起動)/ `docker compose ps`(状態)/
   `docker compose logs -f`(ログ)/ `docker compose down`(停止。データは残る)。**`down -v` はボリュームを消す
   ので、実データが入った後は使わない**。接続先は Postgres = `127.0.0.1:5432`、Meilisearch = `http://127.0.0.1:7700`。

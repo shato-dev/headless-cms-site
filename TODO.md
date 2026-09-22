@@ -2,15 +2,16 @@
 
 `/clear` する前に更新する。全体像と背景は PLAN.md。
 
-## いま(M6 進行中、2026-09-22 着手)
+## いま(M6 完了 2026-09-22 → 次は M7)
 
-M6 = Meilisearch + Cloudflare Workers の検索 API。置き場所は Render Free に決定(PLAN.md の M6 節)。計画は Plan Mode で承認済み。
+M6 = Meilisearch + Cloudflare Workers の検索 API。置き場所は Render Free(PLAN.md の M6 節)。公開サイトの検索は
+本番 API を使い、Render スリープ時は `search.json` の簡易検索にフォールバックする(PR #14, #15, #16, #17 で完了)。
+公開 URL: 検索 Meilisearch <https://aozora-search.onrender.com>(非公開データではない)、検索 API
+<https://search-api.shato-dev.workers.dev>。
 
-- [x] Phase 1: `scripts/build-search-documents.mjs` / `search/`(設定・Docker イメージ)/ 日本語 typo の実測 / 512 MB 制限での検証(PR 1)
-- [x] Phase 2: Render に手動デプロイ完了(2026-09-22。サービス名 `aozora-search`、Free プラン、カード未登録。/health 200、無認証検索 401、検索専用キー取得済み)
-- [x] Phase 3: `workers/search-api/` 実装・デプロイ完了(2026-09-22。<https://search-api.shato-dev.workers.dev>。本番で正常系・異常系・CORS を確認。`wrangler logout` 済み)
-- [x] Phase 4: `Search.astro` を Worker 呼び出し + フォールバックに差し替え(2026-09-22。ローカル・本番 API・強制フォールバックの3経路を確認)
-- [ ] 仕上げ: KNOWLEDGE / PLAN / TODO / `.env.example`
+- [x] Phase 1〜4 完了(上記 PR)
+- [ ] **次にやること**: M7(OpenSearch を概念理解のみ、ローカル Docker、運用しない)に進むか、サイト機能
+      バックログ(ランダムおすすめ等)を先にやるかを、新チャットの冒頭で Plan Mode で決める
 
 ## 前の区切り(M5 完了 2026-09-21 → 次の選択)
 

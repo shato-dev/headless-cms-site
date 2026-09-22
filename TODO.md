@@ -8,7 +8,7 @@ M6 = Meilisearch + Cloudflare Workers の検索 API。置き場所は Render Fre
 
 - [x] Phase 1: `scripts/build-search-documents.mjs` / `search/`(設定・Docker イメージ)/ 日本語 typo の実測 / 512 MB 制限での検証(PR 1)
 - [x] Phase 2: Render に手動デプロイ完了(2026-09-22。サービス名 `aozora-search`、Free プラン、カード未登録。/health 200、無認証検索 401、検索専用キー取得済み)
-- [ ] Phase 3: `workers/search-api/`(PR 2)+ 手動デプロイ(`wrangler login` → deploy → `secret put MEILI_SEARCH_KEY` → `wrangler logout`)
+- [x] Phase 3: `workers/search-api/` 実装・デプロイ完了(2026-09-22。<https://search-api.shato-dev.workers.dev>。本番で正常系・異常系・CORS を確認。`wrangler logout` 済み)
 - [ ] Phase 4: `Search.astro` を Worker 呼び出し + フォールバックに差し替え(PR 3)
 - [ ] 仕上げ: KNOWLEDGE / PLAN / TODO / `.env.example`
 

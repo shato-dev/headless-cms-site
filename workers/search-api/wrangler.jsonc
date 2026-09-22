@@ -1,0 +1,15 @@
+{
+  // Public search API (M6). Separate from the static-assets Worker in the
+  // repo root and from workers/events-api (that one is private, Bearer-only).
+  "name": "search-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-22",
+  "vars": {
+    // Not a secret: the Render service URL. MEILI_SEARCH_KEY (the credential)
+    // is set separately with `wrangler secret put`.
+    "MEILI_URL": "https://aozora-search.onrender.com",
+    // Origins allowed to call this API from a browser (see the CORS check in
+    // src/index.ts). Add other localhost ports here if astro dev uses one.
+    "ALLOWED_ORIGINS": "https://headless-cms-site.shato-dev.workers.dev,http://localhost:4321"
+  }
+}

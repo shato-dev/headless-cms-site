@@ -2,57 +2,20 @@
 
 `/clear` する前に更新する。全体像と背景は PLAN.md。
 
-## いま(M6 完了 2026-09-22 → 次は M7)
+## いま(M6 完了 2026-09-22 → 次はサイト機能バックログ)
 
-M6 = Meilisearch + Cloudflare Workers の検索 API。置き場所は Render Free(PLAN.md の M6 節)。公開サイトの検索は
-本番 API を使い、Render スリープ時は `search.json` の簡易検索にフォールバックする(PR #14, #15, #16, #17 で完了)。
-公開 URL: 検索 Meilisearch <https://aozora-search.onrender.com>(非公開データではない)、検索 API
-<https://search-api.shato-dev.workers.dev>。
+M6(Meilisearch + Cloudflare Workers の検索 API)は完了。次は **M7 より先にサイト機能バックログに着手**する
+と決定(2026-09-22。「まずウェブサイトを完成させたい」ため)。新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` /
+`PLAN.md`(引き継ぎ用メモ)を読み、下記「サイト機能バックログ」から何を・どの順でやるかを Plan Mode で決める。
 
-- [x] Phase 1〜4 完了(上記 PR)
-- [ ] **次にやること**: M7(OpenSearch を概念理解のみ、ローカル Docker、運用しない)に進むか、サイト機能
-      バックログ(ランダムおすすめ等)を先にやるかを、新チャットの冒頭で Plan Mode で決める
-
-## 前の区切り(M5 完了 2026-09-21 → 次の選択)
-
-M5 は完了(用途 = イベントログ。Postgres + JSONB、読み取り専用の認証付き Worker API を Neon 上で公開)。
-新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ)を読み、次を Plan Mode で決める。
-
-- [ ] **次に何をやるか決める**: サイト機能バックログ(ランダムおすすめ・診断式おすすめ・関連作品。実装時に
-      イベントを Postgres に送る接続も検討)/ M6(Meilisearch + Workers 検索 API)のどちらから着手するか
-- [x] Notion「学習まとめ」に M5 の学びを追記(2026-09-21。`my-web-project` 配下に M5 の子ページ、TODO データベースの M4・M5 を完了に更新)
-- [x] Notion「学習まとめ」に M6 の学びを追記、M4 の学習ノート子ページ(未作成だった分)も追記(2026-09-22。`my-web-project` 配下に M4・M6 の子ページを M1〜M6 の時系列順で追加、TODO データベースの該当行にリンクを追記)
-
-
-### Phase 1: ローカル DB + スキーマ + seed + JSONB クエリ ✅(PR #8 マージ済み)
-- [x] 用途を決める(B. 閲覧・操作イベント)
-- [x] `docker compose up -d` でローカル Postgres 起動
-- [x] `db/migrations/001_create_events.sql`(冪等・2 回適用で確認)
-- [x] `scripts/seed-events.mjs`(seed 行だけ入れ直し、app 行に触れないこと・`down`→`up` で残ることを確認)
-- [x] `db/queries/events-jsonb.sql`(`->>` / `@>` / 配列展開 / 日次集計 / `EXPLAIN`)
-- [x] KNOWLEDGE.md / PLAN.md / `.env.example` 更新
-- [x] コミット → push → PR #8 → CI 緑 → squash マージ(2026-09-21)
-
-### Phase 2: 読み取り専用 API ✅(PR #9 マージ済み)
-- [x] `workers/events-api/`(Worker、GET のみ: `/stats/daily` / `/stats/top-works` / `/events`)
-- [x] `wrangler dev` + ローカル接続で確認(正常系・不正な type / limit / SQL インジェクション試行・405 / 404)
-- [x] seed の未来日時バグを修正(API 経由で発見)
-- [x] `npm run build` が通ること、型チェック(一回限り)
-- [x] コミット → push → PR #9 → CI 緑 → マージ(2026-09-21)
-
-### Phase 3: 本番 DB + デプロイ ✅(PR #10 マージ済み、2026-09-21 デプロイ)
-- [x] Neon Free(Postgres 17、シンガポール)+ 読み取り専用ロール `events_reader` + Hyperdrive 設定 `events-db`
-- [x] Bearer トークン認証を追加、`client.end()` ハングを修正、PR #10 マージ
-- [x] main から `wrangler deploy` → <https://events-api.shato-dev.workers.dev>(トークン設定前は全リクエスト 500 = fail closed)
-- [x] `API_TOKEN` を Secret に登録(ユーザー自身)、検証用に `.env` へ `EVENTS_API_TOKEN`
-- [x] 公開 URL で 18 ケース検証(未認証 401 / 認証あり 200 / 400・404・405 / `session_id` 非露出 / 件数一致)
-- [x] Neon の復帰レイテンシを計測(KNOWLEDGE.md の M5 節)
-- [x] `npx wrangler logout` でローカルの Cloudflare ログインを解除(2026-09-21。次回のデプロイ前に `npx wrangler login` が要る)
+- [ ] **次にやること**: サイト機能バックログ(下記)のどれから着手するか Plan Mode で決める。ランダムおすすめ・
+      診断式おすすめは、実装時に M5 の `events` テーブルへイベントを送る接続も検討する
 
 ## 保留(必要になったら)
 
 - [ ] microCMS Webhook →「記事更新で自動再デプロイ」(`repository_dispatch`。今は microCMS を更新しても
       main に push するまでサイトは変わらない。GitHub トークンの権限は最小に)。詳細は PLAN.md の M3 節
+- [ ] M7: OpenSearch の仕組みをローカル Docker で概念理解(運用しない)。サイト機能バックログの後に着手
 
 ## その後(サイト機能バックログ、詳細は PLAN.md)
 
@@ -78,7 +41,14 @@ M5 は完了(用途 = イベントログ。Postgres + JSONB、読み取り専用
   公開 URL: <https://headless-cms-site.shato-dev.workers.dev>。`ci.yml` = `build` → `deploy`(main のみ)
 - **M4**(2026-09-20): Docker Compose で PostgreSQL 17 + Meilisearch v1.53 をローカル起動。
   `127.0.0.1` のみ公開・named volume で永続化・healthcheck。無料・カード不要
+- **M5**(2026-09-21): PostgreSQL + JSONB のイベントログ(用途 = 閲覧・操作イベント)。読み取り専用の
+  Bearer 認証付き Worker API を Neon Free + Hyperdrive で公開(PR #8, #9, #10)。
+  公開 URL: <https://events-api.shato-dev.workers.dev>(要トークン)
+- **M6**(2026-09-22): Meilisearch(Render Free)+ Cloudflare Workers の検索 API(PR #14〜#17)。
+  公開サイトの検索を本番 API 化し、Render スリープ時は簡易検索にフォールバック。
+  公開 URL: <https://search-api.shato-dev.workers.dev>(認証なし・CORS 制限)
+- **Notion 記録**(2026-09-22): M4・M6 の学習ノートを `my-web-project` 配下に追記、TODO データベースも更新(PR #19)
 
 ## 保留・要相談(着手前に料金体系 + カード要否を整理)
 
-- Cloudflare Workers(検索 API)の無料枠 — M6
+- なし(現時点)

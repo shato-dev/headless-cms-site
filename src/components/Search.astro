@@ -14,39 +14,99 @@
     placeholder="タイトル・著者・要約を検索…"
     autocomplete="off"
   />
-  <ul id="search-results" class="search-results" hidden></ul>
+  <div class="search-dropdown">
+    <p id="search-fallback-note" class="search-fallback-note" hidden>
+      検索サーバーが起動中のため、簡易検索の結果を表示しています
+    </p>
+    <ul id="search-results" class="search-results" hidden></ul>
+  </div>
 </div>
 
 <script>
-  type Entry = {
-    title: string;
-    author: string;
-    summary: string;
-    url: string;
-  };
+  // M6: search is served by a Cloudflare Worker in front of Meilisearch
+  // (workers/search-api/), which itself talks to Meilisearch running on
+  // Render's free plan. Render Free spins down after 15 idle minutes and
+  // takes about a minute to wake back up, so this component always has a
+  // fallback: the same build-time search.json + filter() this site used
+  // before M6 (src/pages/search.json.js). Neither URL below is a secret —
+  // both are public API endpoints.
+  const SEARCH_API_URL = 'https://search-api.shato-dev.workers.dev';
+  const DEBOUNCE_MS = 200;
+
+  type Result = { title: string; author: string; url: string };
+  type FallbackEntry = { title: string; author: string; summary: string; url: string };
 
   const input = document.querySelector<HTMLInputElement>('#search-input')!;
   const results = document.querySelector<HTMLUListElement>('#search-results')!;
+  const fallbackNote = document.querySelector<HTMLParagraphElement>('#search-fallback-note')!;
 
-  let entries: Entry[] = [];
-  let loaded = false;
+  let fallbackEntries: FallbackEntry[] | null = null;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let currentRequest: AbortController | null = null;
+  let warmedUp = false;
 
-  // Fetch the index once, on the first keystroke (not on page load).
-  async function loadIndex() {
-    if (loaded) return;
-    const res = await fetch('/search.json');
-    entries = await res.json();
-    loaded = true;
+  // Wake a sleeping Render instance as soon as the visitor shows search
+  // intent, so it has a head start before their first query arrives. Only
+  // once per page load; failures are ignored (the search itself still falls
+  // back if the instance isn't ready yet).
+  function warmUp() {
+    if (warmedUp) return;
+    warmedUp = true;
+    fetch(`${SEARCH_API_URL}/warmup`).catch(() => {});
   }
 
-  function render(matches: Entry[], hasQuery: boolean) {
+  // The pre-M6 client-side search: fetch search.json once, then filter() in
+  // the browser. Used whenever the API is unavailable or too slow.
+  async function loadFallbackIndex(): Promise<FallbackEntry[]> {
+    if (fallbackEntries) return fallbackEntries;
+    const res = await fetch('/search.json');
+    fallbackEntries = await res.json();
+    return fallbackEntries!;
+  }
+
+  async function searchFallback(query: string): Promise<Result[]> {
+    const entries = await loadFallbackIndex();
+    const q = query.toLowerCase();
+    return entries
+      .filter(
+        (entry) =>
+          entry.title.toLowerCase().includes(q) ||
+          entry.author.toLowerCase().includes(q) ||
+          entry.summary.toLowerCase().includes(q),
+      )
+      .slice(0, 20)
+      .map(({ title, author, url }) => ({ title, author, url }));
+  }
+
+  // Try the search API first; fall back to client-side filtering for this
+  // query if it errors, times out, or the Worker itself reports the upstream
+  // as unavailable (503). Returns null if `signal` was aborted by a newer
+  // keystroke — the caller should discard the (now stale) result.
+  async function search(
+    query: string,
+    signal: AbortSignal,
+  ): Promise<{ results: Result[]; fallback: boolean } | null> {
+    try {
+      const res = await fetch(`${SEARCH_API_URL}/search?q=${encodeURIComponent(query)}&limit=20`, { signal });
+      if (!res.ok) throw new Error(`search API returned ${res.status}`);
+      const data = (await res.json()) as { results: Result[] };
+      return { results: data.results, fallback: false };
+    } catch (err) {
+      if (signal.aborted) return null;
+      return { results: await searchFallback(query), fallback: true };
+    }
+  }
+
+  function render(matches: Result[], hasQuery: boolean, fallback: boolean) {
     if (!hasQuery) {
       results.hidden = true;
       results.replaceChildren();
+      fallbackNote.hidden = true;
       return;
     }
 
     results.hidden = false;
+    fallbackNote.hidden = !fallback;
 
     if (matches.length === 0) {
       const li = document.createElement('li');
@@ -59,7 +119,7 @@
     // Build nodes with the DOM API and set text via textContent. Never
     // splice data into an innerHTML string — that is how XSS bugs start.
     results.replaceChildren(
-      ...matches.slice(0, 20).map((entry) => {
+      ...matches.map((entry) => {
         const li = document.createElement('li');
         const a = document.createElement('a');
         a.href = entry.url;
@@ -70,20 +130,25 @@
     );
   }
 
-  input.addEventListener('input', async () => {
-    await loadIndex();
+  input.addEventListener('focus', warmUp, { once: true });
 
-    const query = input.value.trim().toLowerCase();
-    const matches = query
-      ? entries.filter(
-          (entry) =>
-            entry.title.toLowerCase().includes(query) ||
-            entry.author.toLowerCase().includes(query) ||
-            entry.summary.toLowerCase().includes(query),
-        )
-      : [];
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    currentRequest?.abort();
 
-    render(matches, query.length > 0);
+    const query = input.value.trim();
+    if (!query) {
+      render([], false, false);
+      return;
+    }
+
+    debounceTimer = setTimeout(async () => {
+      const controller = new AbortController();
+      currentRequest = controller;
+      const outcome = await search(query, controller.signal);
+      if (outcome === null) return; // superseded by a newer keystroke
+      render(outcome.results, true, outcome.fallback);
+    }, DEBOUNCE_MS);
   });
 </script>
 
@@ -102,15 +167,27 @@
     width: 14rem;
     max-width: 40vw;
   }
-  .search-results {
+  .search-dropdown {
     position: absolute;
     right: 0;
     z-index: 10;
-    margin: 0.3rem 0 0;
-    padding: 0.3rem 0;
-    list-style: none;
+    margin-top: 0.3rem;
     min-width: 18rem;
     max-width: 24rem;
+  }
+  .search-fallback-note {
+    margin: 0 0 0.3rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .search-results {
+    margin: 0;
+    padding: 0.3rem 0;
+    list-style: none;
     max-height: 20rem;
     overflow-y: auto;
     background: var(--bg);

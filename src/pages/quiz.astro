@@ -1,0 +1,223 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getWorks } from '../lib/works';
+
+// The quiz only needs a few fields per work, and only on this page, so the
+// data is baked into the page at build time (no client fetch needed, unlike
+// RandomPick which has to work from every page via the shared header).
+const works = await getWorks();
+const quizWorks = works.map((work) => ({
+  id: work.id,
+  title: work.data.title,
+  author: work.data.author,
+  summary: work.data.summary,
+  genreTags: work.data.genreTags,
+}));
+
+// `set:html` (not a plain `{}` expression — Astro does not evaluate
+// expressions inside <script> tags) injects this as the tag's raw text
+// content. Escaping `<` as < is a defence-in-depth measure against a
+// title ever containing "</script>" and breaking out of the tag; Astro's
+// own JSON serialization already escapes it the same way for define:vars,
+// confirmed by a local build check.
+const quizWorksJson = JSON.stringify(quizWorks).replace(/</g, '\\u003c');
+---
+
+<BaseLayout
+  title="おすすめ診断"
+  description="いくつかの質問に答えると、青空文庫100選から1冊をおすすめします。"
+>
+  <h1>おすすめ診断</h1>
+  <p>気分に近いものを選ぶと、100作品の中からジャンルが近い1冊を選びます。どちらの設問も回答は任意です。</p>
+
+  <div class="quiz-question" data-question="mood">
+    <h2>Q1. 今日の気分に近いものは?</h2>
+    <div class="quiz-options">
+      <button type="button" class="quiz-option" data-weights='{"小説":2}'>物語にじっくり浸りたい</button>
+      <button type="button" class="quiz-option" data-weights='{"童話":2}'>素朴で温かい気持ちになりたい</button>
+      <button type="button" class="quiz-option" data-weights='{"詩":2}'>言葉の美しさを味わいたい</button>
+      <button type="button" class="quiz-option" data-weights='{"随筆":2}'>誰かの人生や考えに触れたい</button>
+      <button type="button" class="quiz-option" data-weights='{"戯曲":2}'>会話のやりとりを楽しみたい</button>
+    </div>
+  </div>
+
+  <div class="quiz-question" data-question="time">
+    <h2>Q2. どのくらいの時間を想定?</h2>
+    <div class="quiz-options">
+      <button type="button" class="quiz-option" data-weights='{"小説":1,"戯曲":1}'>じっくり長めの時間</button>
+      <button type="button" class="quiz-option" data-weights='{"童話":1,"随筆":1}'>すきま時間で軽く</button>
+      <button type="button" class="quiz-option" data-weights='{"詩":1}'>短い言葉をゆっくり</button>
+    </div>
+  </div>
+
+  <div class="quiz-actions">
+    <button type="button" id="quiz-submit">結果を見る</button>
+    <button type="button" id="quiz-retry" hidden>もう一度選ぶ</button>
+  </div>
+
+  <div id="quiz-result" class="quiz-result" hidden></div>
+
+  <script type="application/json" id="quiz-works" set:html={quizWorksJson} />
+</BaseLayout>
+
+<script>
+  type QuizWork = { id: string; title: string; author: string; summary: string; genreTags: string[] };
+
+  const dataEl = document.querySelector<HTMLScriptElement>('#quiz-works')!;
+  const works: QuizWork[] = JSON.parse(dataEl.textContent ?? '[]');
+
+  const submitButton = document.querySelector<HTMLButtonElement>('#quiz-submit')!;
+  const retryButton = document.querySelector<HTMLButtonElement>('#quiz-retry')!;
+  const resultBox = document.querySelector<HTMLDivElement>('#quiz-result')!;
+  const questionEls = document.querySelectorAll<HTMLDivElement>('.quiz-question');
+
+  // One selected option (or none) per question, keyed by data-question.
+  const selected = new Map<string, HTMLButtonElement>();
+
+  for (const questionEl of questionEls) {
+    const questionId = questionEl.dataset.question!;
+    questionEl.querySelectorAll<HTMLButtonElement>('.quiz-option').forEach((option) => {
+      option.addEventListener('click', () => {
+        const alreadySelected = selected.get(questionId) === option;
+        questionEl.querySelectorAll('.quiz-option').forEach((el) => el.classList.remove('selected'));
+        if (alreadySelected) {
+          selected.delete(questionId);
+        } else {
+          option.classList.add('selected');
+          selected.set(questionId, option);
+        }
+      });
+    });
+  }
+
+  function totalWeights(): Record<string, number> {
+    const totals: Record<string, number> = {};
+    for (const option of selected.values()) {
+      const weights = JSON.parse(option.dataset.weights ?? '{}') as Record<string, number>;
+      for (const [genre, points] of Object.entries(weights)) {
+        totals[genre] = (totals[genre] ?? 0) + points;
+      }
+    }
+    return totals;
+  }
+
+  function pickWork(): QuizWork {
+    const weights = totalWeights();
+    const scored = works.map((work) => ({
+      work,
+      score: work.genreTags.reduce((sum, tag) => sum + (weights[tag] ?? 0), 0),
+    }));
+    const topScore = Math.max(...scored.map((entry) => entry.score));
+    // topScore is 0 when nothing was answered (or no genre matched at all):
+    // fall back to picking from every work, same as the header's random pick.
+    const pool = topScore > 0 ? scored.filter((entry) => entry.score === topScore) : scored;
+    return pool[Math.floor(Math.random() * pool.length)].work;
+  }
+
+  function renderResult(work: QuizWork) {
+    const card = document.createElement('article');
+    card.className = 'work-card';
+
+    const heading = document.createElement('h2');
+    const link = document.createElement('a');
+    link.href = `/works/${work.id}`;
+    link.textContent = work.title;
+    heading.append(link);
+
+    const authorP = document.createElement('p');
+    authorP.className = 'work-card-author';
+    authorP.textContent = work.author;
+
+    const summaryP = document.createElement('p');
+    summaryP.className = 'work-card-summary';
+    summaryP.textContent = work.summary;
+
+    const tagsP = document.createElement('p');
+    tagsP.className = 'work-card-tags';
+    for (const tag of work.genreTags) {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = tag;
+      tagsP.append(span);
+    }
+
+    card.append(heading, authorP, summaryP, tagsP);
+    resultBox.replaceChildren(card);
+    resultBox.hidden = false;
+    retryButton.hidden = false;
+  }
+
+  submitButton.addEventListener('click', () => renderResult(pickWork()));
+  retryButton.addEventListener('click', () => renderResult(pickWork()));
+</script>
+
+<style>
+  .quiz-question {
+    margin-top: 1.5rem;
+  }
+  .quiz-question h2 {
+    font-size: 1.05rem;
+    margin-bottom: 0.6rem;
+  }
+  .quiz-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .quiz-option {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .quiz-option.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+  .quiz-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.8rem;
+  }
+  #quiz-submit,
+  #quiz-retry {
+    padding: 0.4rem 1rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .quiz-result {
+    margin-top: 1.5rem;
+  }
+  .quiz-result :global(.work-card) {
+    padding: 1.2rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .quiz-result :global(.work-card h2) {
+    margin: 0 0 0.2rem;
+    font-size: 1.1rem;
+  }
+  .quiz-result :global(.work-card-author) {
+    margin: 0 0 0.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .quiz-result :global(.work-card-summary) {
+    margin: 0.3rem 0;
+  }
+  .quiz-result :global(.work-card-tags) {
+    margin-top: 0.6rem;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+</style>

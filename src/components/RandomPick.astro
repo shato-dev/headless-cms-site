@@ -1,0 +1,75 @@
+---
+// "今日の一冊" — pick one random work and jump straight to it.
+// Same two-region split as Search.astro: nothing runs at build time here,
+// the <script> below is bundled and runs in the visitor's browser on click.
+---
+
+<div class="random-pick">
+  <button type="button" id="random-pick-button">今日の一冊</button>
+  <p id="random-pick-error" class="random-pick-error" hidden>
+    作品一覧を取得できませんでした。しばらくして再度お試しください。
+  </p>
+</div>
+
+<script>
+  type Entry = { url: string };
+
+  const button = document.querySelector<HTMLButtonElement>('#random-pick-button')!;
+  const errorNote = document.querySelector<HTMLParagraphElement>('#random-pick-error')!;
+
+  // No caching here: a successful pick always navigates away (resetting this
+  // script), so a fetched list would never be reused within one page load.
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    errorNote.hidden = true;
+    try {
+      const res = await fetch('/search.json');
+      if (!res.ok) throw new Error(`search.json returned ${res.status}`);
+      const all: Entry[] = await res.json();
+      // Exclude the work currently being viewed, if any, so the button
+      // never "picks" the page you're already on.
+      const candidates = all.filter((entry) => entry.url !== location.pathname);
+      const pool = candidates.length > 0 ? candidates : all;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      location.href = pick.url;
+    } catch {
+      errorNote.hidden = false;
+      button.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .random-pick {
+    position: relative;
+  }
+  #random-pick-button {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #random-pick-button:disabled {
+    color: var(--muted);
+    cursor: default;
+  }
+  .random-pick-error {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+    margin: 0.3rem 0 0;
+    padding: 0.3rem 0.6rem;
+    width: max-content;
+    max-width: 16rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+</style>

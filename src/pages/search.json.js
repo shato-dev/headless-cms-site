@@ -15,6 +15,7 @@ export async function GET() {
     title: work.data.title,
     author: work.data.author,
     summary: work.data.summary,
+    genreTags: work.data.genreTags,
     url: `/works/${work.id}`,
   }));
 

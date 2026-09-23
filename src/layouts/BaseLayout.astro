@@ -3,6 +3,7 @@
 // Each page renders its own content into <slot /> (like React's children).
 import '../styles/global.css';
 import Search from '../components/Search.astro';
+import RandomPick from '../components/RandomPick.astro';
 
 interface Props {
   title: string;
@@ -30,6 +31,7 @@ const siteName = '青空文庫100選';
         <a href="/authors">著者一覧</a>
         <a href="/genres">ジャンル一覧</a>
       </nav>
+      <RandomPick />
       <Search />
     </header>
 

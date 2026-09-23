@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkCard from '../../components/WorkCard.astro';
 import { getWorks } from '../../lib/works';
 
 // getStaticPaths: because this is a static site, we must list every URL
@@ -7,14 +8,34 @@ import { getWorks } from '../../lib/works';
 // by the id we assigned in src/content/works.json (the Aozora Bunko work
 // number extracted from its card URL).
 export async function getStaticPaths() {
+  // Declared inside the function: Astro extracts getStaticPaths into its
+  // own isolated module at build time, so it cannot see top-level consts
+  // defined elsewhere in this frontmatter.
+  const MAX_RELATED = 4;
   const works = await getWorks();
-  return works.map((work) => ({
-    params: { id: work.id },
-    props: { work },
-  }));
+  return works.map((work) => {
+    // "Related works" is a plain build-time filter over the same list —
+    // no extra data or API needed. The two lists may overlap (e.g. another
+    // work by the same author in the same genre); that's fine for a
+    // "you might also like" section.
+    const sameAuthor = works
+      .filter((other) => other.id !== work.id && other.data.author === work.data.author)
+      .slice(0, MAX_RELATED);
+    const sameGenre = works
+      .filter(
+        (other) =>
+          other.id !== work.id && other.data.genreTags.some((tag) => work.data.genreTags.includes(tag)),
+      )
+      .slice(0, MAX_RELATED);
+
+    return {
+      params: { id: work.id },
+      props: { work, sameAuthor, sameGenre },
+    };
+  });
 }
 
-const { work } = Astro.props;
+const { work, sameAuthor, sameGenre } = Astro.props;
 const { title, author, authorReading, translator, summary, genreTags, aozoraCardUrl } = work.data;
 ---
 
@@ -40,6 +61,36 @@ const { title, author, authorReading, translator, summary, genreTags, aozoraCard
 
     <p><a href="/">← 作品一覧へ</a></p>
   </article>
+
+  {sameAuthor.length > 0 && (
+    <section class="related-works">
+      <h2>{author}の他の作品</h2>
+      {sameAuthor.map((related) => (
+        <WorkCard
+          id={related.id}
+          title={related.data.title}
+          author={related.data.author}
+          summary={related.data.summary}
+          genreTags={related.data.genreTags}
+        />
+      ))}
+    </section>
+  )}
+
+  {sameGenre.length > 0 && (
+    <section class="related-works">
+      <h2>同じジャンルの作品</h2>
+      {sameGenre.map((related) => (
+        <WorkCard
+          id={related.id}
+          title={related.data.title}
+          author={related.data.author}
+          summary={related.data.summary}
+          genreTags={related.data.genreTags}
+        />
+      ))}
+    </section>
+  )}
 </BaseLayout>
 
 <style>
@@ -63,5 +114,11 @@ const { title, author, authorReading, translator, summary, genreTags, aozoraCard
     margin-top: 1.5rem;
     color: var(--muted);
     font-size: 0.9rem;
+  }
+  .related-works {
+    margin-top: 2rem;
+  }
+  .related-works h2 {
+    font-size: 1.1rem;
   }
 </style>

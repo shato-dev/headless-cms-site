@@ -9,7 +9,7 @@
 
 ---
 
-## 進捗(現在地) — 2026-09-21 時点
+## 進捗(現在地) — 2026-09-23 時点
 
 | M | マイルストーン | 状態 | メモ |
 |---|---|---|---|
@@ -19,7 +19,7 @@
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ✅ 完了(2026-09-20) | `docker-compose.yml`(`postgres:17-alpine` + `getmeili/meilisearch:v1.53`)。無料・カード不要。ポートは `127.0.0.1` のみ公開、named volume で永続化、healthcheck あり。値は `.env`、キー名は `.env.example` |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ✅ 完了(2026-09-21) | 用途 = 閲覧・操作イベント。`events` テーブル(共通項目は列、詳細は JSONB + GIN)、seed 2,341 件(疑似データ)、読み取り専用 Worker API `events-api`(PR #8, #9, #10)。本番 DB = **Neon Free**(無料・カード不要、Postgres 17、シンガポール)+ Hyperdrive。**Bearer トークン認証**付きで <https://events-api.shato-dev.workers.dev> に手動デプロイ |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ✅ 完了(2026-09-22) | 置き場所 = **Render Free**(Docker、無料・カード不要)。Meilisearch <https://aozora-search.onrender.com> + 検索 API <https://search-api.shato-dev.workers.dev>。`Search.astro` は本番 API を使い、Render スリープ時は `search.json` の簡易検索にフォールバック(PR #14, #15, #16, #17)。詳細は M6 節 |
-| **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手(次の候補) | **運用しない**。仕組みの理解のみ |
+| **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手(次にやること) | **運用しない**。仕組みの理解のみ。サイト機能バックログ3機能(下記)完了により着手可 |
 
 継続タスク(番号なし): Claude Code の実践的な使い方に慣れる(CLAUDE.md 構成 / カスタムコマンド /
 サブエージェント / Hook)。各マイルストーンの中で都度触れる。
@@ -58,8 +58,11 @@
      `search/documents.json` を commit → PR → マージで Render に反映(Render の auto-deploy 前提。未設定なら
      手動で "Manual Deploy")。デプロイは手動(`workers/search-api` で `npx wrangler deploy`、要 `wrangler login`。
      CI の `deploy` ジョブの対象外)。Render に**支払い方法を追加しない**運用を継続する。
-  3. **次の候補(着手前に Plan Mode で決める)**: **M7**(OpenSearch を概念理解のみ、運用しない)、または
-     **サイト機能バックログ**(下記節。ランダムおすすめ・診断式おすすめ・関連作品など)。
+  3. **サイト機能バックログの3機能は完了(2026-09-23)**。ランダムおすすめ(PR #21)・関連作品(PR #22)・
+     診断式おすすめ(PR #23)。設計・経緯は下記「サイト機能バックログ」節。本番
+     (<https://headless-cms-site.shato-dev.workers.dev>)で3機能とも動作確認済み。バックログ表に残る
+     「既読チェック・お気に入り」「文学史年表」「ガチャ風演出」は「余力があれば」枠で必須ではない。
+  4. **次にやること**: **M7**(OpenSearch を概念理解のみ、運用しない)。詳細は下記 M7 節。
 - **ローカル基盤(M4 で導入)**: `docker compose up -d`(起動)/ `docker compose ps`(状態)/
   `docker compose logs -f`(ログ)/ `docker compose down`(停止。データは残る)。**`down -v` はボリュームを消す
   ので、実データが入った後は使わない**。接続先は Postgres = `127.0.0.1:5432`、Meilisearch = `http://127.0.0.1:7700`。

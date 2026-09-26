@@ -1,0 +1,22 @@
+# M7: throwaway single-node OpenSearch for learning. NOT used in production.
+# Separate project name so `down -v` here never touches the M4 volumes (pgdata / meili_data).
+# Usage (from repo root): docker compose -f opensearch/docker-compose.yml up -d --build
+name: opensearch-lab
+
+services:
+  opensearch:
+    build: .
+    environment:
+      discovery.type: single-node
+      # Local-only learning setup: no auth / TLS. Port is bound to loopback below.
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:9200:9200"
+    # No volume on purpose: data is disposable.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

@@ -1,0 +1,21 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "ja": { "type": "custom", "tokenizer": "kuromoji_tokenizer", "filter": ["kuromoji_baseform", "lowercase"] }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id":            { "type": "keyword" },
+      "title":         { "type": "text", "analyzer": "ja" },
+      "author":        { "type": "text", "analyzer": "ja", "fields": { "raw": { "type": "keyword" } } },
+      "authorReading": { "type": "text", "analyzer": "ja" },
+      "summary":       { "type": "text", "analyzer": "ja" },
+      "genreTags":     { "type": "keyword" }
+    }
+  }
+}

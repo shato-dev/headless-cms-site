@@ -32,17 +32,16 @@
 公開 URL が `*.workers.dev` か独自ドメインのルートになるため軽くなる。ただし原理(Astro は自分が生成する
 asset URL にしか `base` を足さない、自分で書いた `<a href>` は直さない)は覚えておく。
 
-### 現在地と次にやること(2026-09-21 時点)
+### 現在地と次にやること(2026-09-26 時点)
 
-M1〜M5 は完了(M2: microCMS 連携の 100 作品サイト、M3: Cloudflare Workers への自動デプロイ、
+M1〜M7 は完了(M2: microCMS 連携の 100 作品サイト、M3: Cloudflare Workers への自動デプロイ、
 M4: Docker Compose で PostgreSQL + Meilisearch をローカル起動、M5: PostgreSQL + JSONB のイベントログ +
-認証付き読み取り専用 Worker API を Neon + Hyperdrive で公開)。
+認証付き読み取り専用 Worker API を Neon + Hyperdrive で公開、M6: Meilisearch(Render Free)+ 検索 API Worker、
+M7: OpenSearch を使い捨てローカル Docker で概念理解(運用しない、`opensearch/`))。
 公開 URL は <https://headless-cms-site.shato-dev.workers.dev>。詳細は `PLAN.md` の進捗表と
 「引き継ぎ用メモ」、直近タスクは `TODO.md`。
 
-- 次はサイト機能バックログか M6 のどちらから着手するかを Plan Mode で決める(`TODO.md`)。M3 の残り
-  (microCMS Webhook の自動再デプロイ等)は後回し・見送りで決着済み(`PLAN.md` の M3 節)。
-- 以降は `PLAN.md` の順(M6 Meilisearch + Workers → M7 OpenSearch)。
+- 全マイルストーン完了。次は `TODO.md` の保留・余力枠(microCMS Webhook、既読チェック等)を Plan Mode で選ぶ。
 - 各マイルストーンは Plan Mode で方針を出してから着手し、astro-warmup と同じく各ステップに Git 操作
   (コミット / ブランチ / PR / CI)を意図的に混ぜて進める。
 

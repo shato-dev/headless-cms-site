@@ -2,13 +2,12 @@
 
 `/clear` する前に更新する。全体像と背景は PLAN.md。
 
-## いま(サイト機能バックログ3機能 完了 2026-09-23 → 次は M7)
+## いま(M7 完了 2026-09-26。M1〜M7 の全マイルストーン完了)
 
-サイト機能バックログのうち予定していた3機能(ランダムおすすめ・関連作品・診断式おすすめ)が完了。
-本番(<https://headless-cms-site.shato-dev.workers.dev>)で3機能とも動作確認済み(2026-09-23)。
-ここで一区切りし、**次のチャットで M7 に着手する**(このチャットではここまで。新チャットはまず
-`CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ)を読む)。
+M7(OpenSearch 概念理解、運用しない)を完了(`feat/opensearch-concepts`)。成果は KNOWLEDGE.md の M7 節と `opensearch/README.md`。
+新チャットはまず `CLAUDE.md` / `CLAUDE.local.md` / `PLAN.md`(引き継ぎ用メモ)を読む。
 
+- [x] M7: OpenSearch をローカル Docker で概念理解(2026-09-26)— `_analyze` / mapping / `_bulk` / match・bool・fuzziness / BM25 `explain` を実測。Meilisearch との比較表は KNOWLEDGE.md
 - [x] ランダムおすすめ(「今日の一冊」)(2026-09-23。`feat/random-pick`、PR #21)— `events` テーブルへの
       `random_pick` 送信は検討の結果見送り(M5 で書き込み API 公開をスコープ外にした判断を踏襲。詳細は
       PLAN.md サイト機能バックログ節)
@@ -17,7 +16,7 @@
 - [x] 診断式おすすめ(2026-09-23。`feat/recommend-quiz`、PR #23)— `/quiz` に2問の `genreTags` ベース
       簡易診断。`events` への `quiz_completed` 送信は同じ理由で見送り
 
-- [ ] **次にやること**: M7(OpenSearch をローカル Docker で概念理解、運用しない)。下記「保留」参照
+- [ ] **次にやること**: 保留・余力枠(下記)から選ぶ。学習の区切りとして Notion「学習まとめ」への移植・スライド資料化も候補(`CLAUDE.local.md` 参照)
 
 ## 保留(必要になったら)
 
@@ -54,6 +53,7 @@
 - **Notion 記録**(2026-09-22): M4・M6 の学習ノートを `my-web-project` 配下に追記、TODO データベースも更新(PR #19)
 - **サイト機能バックログ3機能**(2026-09-23): ランダムおすすめ(PR #21)・関連作品(PR #22)・
   診断式おすすめ(PR #23)。3機能とも本番で動作確認済み
+- **M7**(2026-09-26): OpenSearch 3.8.0 を単一ノード Docker で学習用に起動(運用しない)。kuromoji・bool・BM25 を実測。使い方は `opensearch/README.md`
 
 ## 保留・要相談(着手前に料金体系 + カード要否を整理)
 

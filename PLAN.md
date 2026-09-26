@@ -19,7 +19,7 @@
 | **M4** | Docker Compose で PostgreSQL + Meilisearch をローカル起動 | ✅ 完了(2026-09-20) | `docker-compose.yml`(`postgres:17-alpine` + `getmeili/meilisearch:v1.53`)。無料・カード不要。ポートは `127.0.0.1` のみ公開、named volume で永続化、healthcheck あり。値は `.env`、キー名は `.env.example` |
 | **M5** | PostgreSQL + JSONB でメタデータ保存・API 化 | ✅ 完了(2026-09-21) | 用途 = 閲覧・操作イベント。`events` テーブル(共通項目は列、詳細は JSONB + GIN)、seed 2,341 件(疑似データ)、読み取り専用 Worker API `events-api`(PR #8, #9, #10)。本番 DB = **Neon Free**(無料・カード不要、Postgres 17、シンガポール)+ Hyperdrive。**Bearer トークン認証**付きで <https://events-api.shato-dev.workers.dev> に手動デプロイ |
 | **M6** | Meilisearch で検索実装 + Cloudflare Workers で検索 API 公開 | ✅ 完了(2026-09-22) | 置き場所 = **Render Free**(Docker、無料・カード不要)。Meilisearch <https://aozora-search.onrender.com> + 検索 API <https://search-api.shato-dev.workers.dev>。`Search.astro` は本番 API を使い、Render スリープ時は `search.json` の簡易検索にフォールバック(PR #14, #15, #16, #17)。詳細は M6 節 |
-| **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ⬜ 未着手(次にやること) | **運用しない**。仕組みの理解のみ。サイト機能バックログ3機能(下記)完了により着手可 |
+| **M7** | OpenSearch の仕組みをローカル Docker で概念理解 | ✅ 完了(2026-09-26) | **運用しない**。単一ノード OpenSearch 3.8.0 + kuromoji を `opensearch/` に用意し、`_analyze` / mapping / `_bulk` / match・bool・fuzziness / BM25 `explain` を実測。成果は KNOWLEDGE.md の M7 節(Meilisearch との比較表つき) |
 
 継続タスク(番号なし): Claude Code の実践的な使い方に慣れる(CLAUDE.md 構成 / カスタムコマンド /
 サブエージェント / Hook)。各マイルストーンの中で都度触れる。
@@ -62,7 +62,9 @@
      診断式おすすめ(PR #23)。設計・経緯は下記「サイト機能バックログ」節。本番
      (<https://headless-cms-site.shato-dev.workers.dev>)で3機能とも動作確認済み。バックログ表に残る
      「既読チェック・お気に入り」「文学史年表」「ガチャ風演出」は「余力があれば」枠で必須ではない。
-  4. **次にやること**: **M7**(OpenSearch を概念理解のみ、運用しない)。詳細は下記 M7 節。
+  4. **M7 は完了(2026-09-26)**。詳細は下記 M7 節。使い方は `opensearch/README.md`
+     (`docker compose -f opensearch/docker-compose.yml up -d --build` → `./opensearch/load.sh`。使い捨てなので `down -v` してよい。
+     M4 の compose とはプロジェクト名が別)。**M1〜M7 の全マイルストーン完了**。次は保留・余力枠(`TODO.md`)から選ぶ。
 - **ローカル基盤(M4 で導入)**: `docker compose up -d`(起動)/ `docker compose ps`(状態)/
   `docker compose logs -f`(ログ)/ `docker compose down`(停止。データは残る)。**`down -v` はボリュームを消す
   ので、実データが入った後は使わない**。接続先は Postgres = `127.0.0.1:5432`、Meilisearch = `http://127.0.0.1:7700`。
@@ -351,6 +353,10 @@ fetch ではなく、ページ単体でしか使わないため往復が不要)�
 - **なぜ / 何を学ぶか**: Meilisearch との比較で「全文検索の一般的な仕組み(analyzer / inverted index /
   クエリ DSL / スコアリング)」を掴む。Elasticsearch 系の語彙に触れておく。
 - **Git・GitHub**: 学習メモ中心。KNOWLEDGE.md に追記。コードは最小(compose の一部 or 使い捨てスクリプト)。
+- **やったこと(2026-09-26)**: `opensearch/{docker-compose.yml,Dockerfile,index.json,load.sh,README.md}`(別 compose・別プロジェクト名、
+  security 無効・`127.0.0.1` のみ公開・ボリュームなし)。既存 `search/documents.json` の 100 作品を再利用。
+  M6 で「原因未調査」だった日本語の漢字誤字が救えない理由(kuromoji が誤字を 1 文字ずつに割るため fuzziness が効かない)を確認。
+  ブランチ `feat/opensearch-concepts`。
 
 ---
 

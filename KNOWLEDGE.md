@@ -55,6 +55,29 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
 - **graceful degradation(縮退運転)**: 主機能(API 検索)が使えないとき、機能を落として(ブラウザ内の簡易検索で)動き続けること。
   無料枠のサービスは遅い・止まることがある前提で作る。
 
+- **OpenSearch**: Elasticsearch から fork された OSS の全文検索・分析エンジン(Apache 2.0)。Elasticsearch が OSS ライセンスを
+  外れたのを受けて AWS が fork した。API・語彙(index / mapping / analyzer / クエリ DSL)はほぼ Elasticsearch 系そのままなので、
+  片方を理解すれば求人・記事で出てくる「Elasticsearch 系」の話が読める。Java 製で、複数ノードのクラスタで動かす前提の設計。
+- **index / document / mapping**: index = 文書の入れ物(RDB のテーブルに近い)、document = JSON 1 件(行)、mapping = 各フィールドの型と
+  分析方法の宣言(スキーマ)。Meilisearch は型を自動推定して設定不要だが、OpenSearch は mapping で自分で決める。
+- **shard / replica**: shard = index を分割した単位(横に並べて規模を出す)、replica = shard のコピー(障害対策・読み取り分散)。
+  replica は別ノードにしか置けないので、単一ノードだと既定の replica 1 が置き場無しで **yellow**(動くが冗長性なし)になる。
+- **analyzer**: 「char filter(文字の前処理)→ tokenizer(語に分ける)→ token filter(語の正規化・除去)」の 3 段で、文章を
+  転置インデックスに載せる語の列に変える部品。**索引時と検索時に同じ処理を通す**から表記ゆれを吸収できる。`_analyze` API で出力を確認できる。
+- **kuromoji**: 日本語の形態素解析(辞書ベースの分かち書き)プラグイン。`standard` は日本語を 1 文字ずつに割るが、kuromoji は
+  「作品」「太宰」のように語で切り、活用形を原形にもできる(`kuromoji_baseform`。「走った」→「走る」)。
+- **`text` と `keyword`**: `text` = 分析して語に分け全文検索に使う型。`keyword` = 分析せず値をそのまま 1 語として持つ型で、
+  完全一致・絞り込み・集計(facet)向き。同じ項目を両方で持つ(`author` と `author.raw`)ことがよくある。
+- **クエリ DSL**: JSON で書く検索クエリ。`match`(分析して語ごとに探す)、`match_phrase`(語の隣接・順序も要求)、
+  `multi_match`(複数フィールド + `^` で重み)、`term`(分析しない完全一致。`text` 項目に投げると当たらない罠)、
+  `bool`(組み合わせ: `must` = AND でスコアに効く / `should` = OR でスコアに効く / `filter` = AND でスコアに効かない /
+  `must_not` = 除外)。「関連度に効かせたい条件」と「ただ絞りたい条件」を分けるのが `bool` の核心。
+- **BM25**: OpenSearch の既定のスコア計算。idf(その語を含む文書が少ないほど高い)× tf(文書内で何回出るか。ただし頭打ち +
+  フィールドが平均より長いほど割り引く)。`explain: true` で内訳が見える。Meilisearch は数式ではなく ranking rules
+  (typo → 語の数 → 近接 → ... を上から順に適用)で並べる、という思想の違いがある。
+- **near-real-time(refresh)**: 投入した文書は refresh(既定 1 秒ごと)されるまで検索に出ない。Lucene が
+  「小さな索引の塊(segment)を作って公開する」方式のため。書き込み直後に検索したいなら `_refresh` を明示する。
+
 ### Cloudflare(Workers)まわり
 - **Workers**: 「世界中の Cloudflare の拠点(エッジ)で動く小さなサーバー関数」。自前サーバーを持たずに
   API を置ける。M6 の検索 API で使う。
@@ -318,6 +341,49 @@ content collection / コンポーネント / ルーティング / Git・GitHub �
   失敗させる方法で行った(本物の Render を落とさずに済む)。
 
 ### M7: OpenSearch(概念理解のみ)
+- **やったこと(2026-09-26)**: `opensearch/`(単一ノード、v3.8.0、kuromoji 入り Dockerfile、`load.sh`、手順は `opensearch/README.md`)。
+  100 作品(`search/documents.json`)を投入して手で叩いた。運用はしない。無料・カード不要。ポートは `127.0.0.1` のみ、
+  LAN 側 IP からは届かないことを確認。コンテナのメモリは約 900 MiB(Meilisearch は約 66 MiB)。
+- **構築時のハマりどころ**: 初回 `up --build` が `DeadlineExceeded` で失敗(Docker Hub からの image 取得のタイムアウト。
+  `docker pull` を単体でやり直したら成功 → 再ビルドで通った)。`--build` が失敗したら、ビルド手順そのものか「ベース image の取得」かを
+  切り分ける(`docker pull` を単体で試す)。zsh は未クォートの変数を単語分割しない(bash と違う)ので、
+  `H='-H a -H b'` のような変数を curl に渡す書き方は zsh では壊れる(ヘッダは `-H "$J"` のように 1 つずつ渡す)。
+- **`_analyze` の実測**(「走れメロスは太宰治の作品」):
+  `standard` → `走 / れ / メロス / は / 太 / 宰 / 治 / の / 作 / 品`(漢字は 1 文字ずつ、カタカナだけ塊)、
+  `kuromoji` → `走れる / メロス / 太宰 / 治 / 作品`(助詞は除去、「走れ」は原形「走れる」に)。
+  「人間失格を読んだ。走った。」→ `人間 / 失格 / 読む / 走る`。英語 `english` は `quick / fox / were / run`
+  (`the` は除去、`foxes` → `fox`、`running` → `run`。`were` は既定のストップワードに無く残る)。
+- **near-real-time の実測**: `_bulk` の直後に `_count` → 0 件、約 2 秒後 → 100 件。
+- **yellow の実測**: 既定設定の index を作ると単一ノードで `status: yellow, unassigned_shards: 1`。replica を 0 にした `works` は green。
+- **クエリの実測**(100 作品、kuromoji): `match` で「走れメロス」→ 1 件。「恋 悲しみ」は OR で 8 件、`operator: and` だと 0 件。
+  `multi_match` で「太宰」を `title^3` にすると、タイトルに「太宰」を含まない太宰作品でも著者フィールドで拾えた(6 件)。
+  `term` の `genreTags: 童話` → 12 件だが `genreTags: 童` → 0 件(keyword は部分一致しない)。
+  `term` の `author: 宮沢賢治` → **0 件**(`author` は text で「宮沢 / 賢治」に割れて索引されているため)、`author.raw` なら 6 件。
+  `bool`(`must` 少年 + `filter` 小説 + `must_not` 太宰治)→ 1 件(怪人二十面相)。
+  `must` と `filter` に同じ `term: 童話` を入れ替えると、結果件数は同じ 12 件で、スコアだけ 1.0 と 0(`filter` はスコアに寄与しない)。
+- **fuzziness の実測(M6 の「原因は未調査」の答え)**: kuromoji は誤字を含む語を `羅生問` → `羅 / 生 / 問`、`人間失客` →
+  `人間 / 失 / 客`、`注文の多い料里店` → `注文 / の / 多い / 料 / 里 / 店` と**1 文字ずつに割る**。`fuzziness: AUTO` は
+  「語の長さ 0〜2 文字は完全一致、3〜5 文字は 1 typo、6 文字以上は 2 typo」なので、1 文字の語に typo は許されず、漢字の誤字は救えない。
+  M6 で Meilisearch でも同じ結果になった理由は、トークナイザの粒度で説明がつく(Meilisearch 側のトークン出力は今回も未確認なので、
+  「同じ仕組みが原因」とまでは言えない)。既定の OR だと `羅生問` は「私の生ひ立ち」、`人間失客` は「人間椅子」を返すが、これは
+  typo の救済ではなく、割れた 1 文字(生)や別の語(人間)に当たっただけ(`operator: and` にすると 0 件。M6 の `matchingStrategy: all` と同じ落とし穴)。
+  かなの誤字は効いた(`走れメロズ` → `走れる / メロズ` に割れ、`メロズ` が 1 typo で `メロス` に当たって「走れメロス」がヒット)。
+- **`explain` の実測**: 「少年」で 100 作品中 3 作品にだけ出る → idf = ln(1 + (100 − 3 + 0.5) / (3 + 0.5)) ≈ 3.36(希少な語ほど高い)。
+  tf = freq / (freq + k1 × (1 − b + b × dl / avgdl)) で k1 = 1.2、b = 0.75、フィールド長 88(平均 92.9)、出現 2 回 → 0.634。
+  スコア = idf × tf ≈ 2.13。「同じ語が何度出ても頭打ち」「長い文章ほど 1 回の出現の価値が薄い」が数式で見える。
+- **Meilisearch との比較**(今回触った範囲での整理):
+  | 観点 | Meilisearch | OpenSearch |
+  |---|---|---|
+  | 思想 | 設定なしですぐ使える、サイト内検索向け | 分析基盤も含めて何でも設定できる汎用エンジン |
+  | スキーマ | 型は自動推定。設定は `settings.json` 程度 | `mapping` で型・analyzer を明示 |
+  | 順位づけ | ranking rules を上から適用 | BM25(数式)+ `bool` / `boost` で自分で調整 |
+  | typo | 既定で有効(語の長さで段階的) | 既定は無効。`fuzziness` をクエリごとに指定 |
+  | 日本語 | 内蔵トークナイザ(Charabia) | kuromoji 等のプラグインを自分で入れて選ぶ |
+  | 集計・絞り込み | facet(絞り込み用) | `aggs` で集計まで(ログ分析・ダッシュボード向け) |
+  | 運用 | 単一バイナリ、約 60 MB | JVM、約 900 MB、本格運用は複数ノードのクラスタ + shard / replica の設計 |
+  | 向く用途 | 小〜中規模のサイト・アプリの検索 | 大規模・多様な検索、ログ / 分析、細かな関連度チューニング |
+  この学習サイト(100 件)では Meilisearch で十分で、OpenSearch は過剰。ただし「検索エンジンが裏でやっていること」は共通で、
+  OpenSearch はその部品が全部表に出ている、という見方をすると理解しやすかった。
 
 ---
 
